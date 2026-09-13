@@ -22,7 +22,7 @@ set "GAME_ID=superliminal"
 set "MOD_DISPLAY_NAME=Superliminal Head Tracking"
 set "MOD_DLLS=SuperliminalHeadTracking.dll CameraUnlock.Core.dll CameraUnlock.Core.Unity.dll"
 set "MOD_INTERNAL_NAME=SuperliminalHeadTracking"
-set "MOD_VERSION=0.0.0"
+set "MOD_VERSION=0.1.0"
 set "STATE_FILE=.headtracking-state.json"
 set "FRAMEWORK_TYPE=BepInEx"
 :: x64 or x86 - selects the vendored BepInEx zip.

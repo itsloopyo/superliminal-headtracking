@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.0.0] - 2026-09-07
+## [0.1.0] - 2026-09-13
 
 ### Added
 - Initial release.
