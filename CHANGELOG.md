@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.0] - 2026-09-13
+
+### Other
+
+- Add Xbox Game Pass support via a BepInEx 6 IL2CPP build
+
 ## [0.1.0] - 2026-09-13
 
 ### Added

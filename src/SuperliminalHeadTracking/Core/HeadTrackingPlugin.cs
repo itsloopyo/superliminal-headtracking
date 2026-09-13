@@ -38,7 +38,7 @@ namespace SuperliminalHeadTracking.Core
 #endif
         public const string PluginGUID = "com.cameraunlock.superliminal.headtracking";
         public const string PluginName = "Superliminal Head Tracking";
-        public const string PluginVersion = "0.1.0";
+        public const string PluginVersion = "0.2.0";
 
         private const float StartupNotificationSeconds = 4f;
         private const float StatusNotificationSeconds = 1.5f;

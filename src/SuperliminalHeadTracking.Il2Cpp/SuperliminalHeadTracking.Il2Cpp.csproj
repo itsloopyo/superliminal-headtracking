@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <AssemblyName>SuperliminalHeadTracking</AssemblyName>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <DefineConstants>$(DefineConstants);IL2CPP</DefineConstants>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>disable</Nullable>
