@@ -1,0 +1,43 @@
+{
+  "schema_version": 2,
+  "mod_info": {
+    "name": "SuperliminalHeadTracking",
+    "version": "0.0.0",
+    "game_id": "superliminal"
+  },
+  "strategy": "BepInEx5",
+  "delivery_mode": "manifest",
+  "loader": {
+    "archives": [
+      {
+        "source": "vendor/bepinex/BepInEx_win_x64.zip"
+      }
+    ],
+    "detect": [
+      "BepInEx/core/BepInEx.dll",
+      "BepInEx/core/BepInEx.Core.dll"
+    ],
+    "seed": [
+      {
+        "target": "BepInEx/config/BepInEx.cfg",
+        "content_b64": "W0xvZ2dpbmcuQ29uc29sZV0NCkVuYWJsZWQgPSB0cnVlDQoNCltMb2dnaW5nLkRpc2tdDQpFbmFibGVkID0gdHJ1ZQ0K"
+      }
+    ]
+  },
+  "files": [
+    {
+      "source": "plugins/SuperliminalHeadTracking.dll",
+      "target": "BepInEx/plugins/SuperliminalHeadTracking.dll"
+    },
+    {
+      "source": "plugins/CameraUnlock.Core.dll",
+      "target": "BepInEx/plugins/CameraUnlock.Core.dll"
+    },
+    {
+      "source": "plugins/CameraUnlock.Core.Unity.dll",
+      "target": "BepInEx/plugins/CameraUnlock.Core.Unity.dll"
+    }
+  ],
+  "runtime_requirements": [],
+  "dependencies": []
+}

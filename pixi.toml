@@ -1,0 +1,44 @@
+[workspace]
+name = "superliminal-head-tracking"
+version = "0.0.0"
+description = "Head tracking mod for Superliminal using the CameraUnlock shared library"
+channels = ["conda-forge"]
+platforms = ["win-64"]
+
+[tasks]
+sync = "git submodule update --remote cameraunlock-core"
+setup = "powershell -ExecutionPolicy Bypass -File scripts/setup-libs.ps1"
+restore = { cmd = "dotnet restore src/SuperliminalHeadTracking/SuperliminalHeadTracking.csproj", depends-on = ["setup"] }
+build = { cmd = "dotnet build src/SuperliminalHeadTracking/SuperliminalHeadTracking.csproj -c Release -m:1", depends-on = ["restore"] }
+# Checks that every member reference the build emits resolves against the
+# assemblies it binds to at runtime. Stub/engine shape drift (a property
+# declared as a field, or the reverse) compiles cleanly and only fails in
+# game. Needs the game installed; skips and succeeds without it.
+verify-refs = { cmd = "powershell -ExecutionPolicy Bypass -File cameraunlock-core/scripts/verify-assembly-refs.ps1 -GameId superliminal -BuildDir src/SuperliminalHeadTracking/bin/Release", depends-on = ["build"] }
+install = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1 Release", depends-on = ["build"] }
+uninstall = "scripts\\uninstall.cmd"
+# Produces both release/SuperliminalHeadTracking-v<version>-installer.zip and
+# -nexus.zip. Runs from a clean checkout with no Superliminal install: setup
+# builds every reference from repo files only.
+package = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1", depends-on = ["build"] }
+clean = "dotnet clean src/SuperliminalHeadTracking/SuperliminalHeadTracking.csproj"
+# No automated test suite. What the mod does is move a camera in a running game,
+# so what stands in for a test run is an in-game verification pass. Declared as a
+# no-op so the task exists and says so, rather than being absent and leaving the
+# reader to guess.
+test = "powershell -Command \"Write-Host 'No automated tests - verification for this mod is an in-game pass'\""
+# Preflight diagnostics. Nothing depends on them: they read what is committed
+# (and, for the manifest, the last ZIP `package` wrote) and report.
+validate-manifest = "node cameraunlock-core/scripts/validate-manifest.mjs ."
+validate-notices = "node cameraunlock-core/scripts/validate-notices.mjs ."
+# Refreshes vendor/bepinex from upstream within the pinned range. Manual only -
+# CI never reaches the network for a loader, it extracts what is vendored here.
+update-deps = "powershell -ExecutionPolicy Bypass -File scripts/update-deps.ps1"
+
+# Full release workflow - bumps the version, builds, writes the changelog,
+# commits, tags and pushes, which triggers .github/workflows/release.yml.
+# Unattended: the invocation is the authorization, nothing prompts.
+# Usage: pixi run release <major|minor|patch|nightly|X.Y.Z>
+# `nightly` short-circuits to scripts/release-nightly.ps1, which refreshes the
+# rolling `dev` GitHub pre-release instead of cutting a version.
+release = "powershell -ExecutionPolicy Bypass -File scripts/release.ps1"

@@ -1,0 +1,7 @@
+<Project>
+  <!-- Defaults every project in the tree to the generated reference stubs. A game
+       install is an explicit -p:UnityEnginePath= opt-in and is never probed for. -->
+  <PropertyGroup Condition="'$(UnityEnginePath)' == '' And Exists('$(MSBuildThisFileDirectory)src\SuperliminalHeadTracking\libs\UnityEngine.dll')">
+    <UnityEnginePath>$(MSBuildThisFileDirectory)src\SuperliminalHeadTracking\libs</UnityEnginePath>
+  </PropertyGroup>
+</Project>

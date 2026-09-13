@@ -1,0 +1,100 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>SuperliminalHeadTracking</AssemblyName>
+    <RootNamespace>SuperliminalHeadTracking</RootNamespace>
+    <Version>0.0.0</Version>
+    <LangVersion>7.3</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <OutputType>Library</OutputType>
+    <Authors>itsloopyo</Authors>
+    <Description>Head tracking mod for Superliminal using CameraUnlock.Core</Description>
+  </PropertyGroup>
+
+  <!-- Set UnityEnginePath BEFORE ProjectReference so it can be passed to
+       CameraUnlock.Core.Unity. It points at the stubs 'pixi run setup' stages into
+       libs/, and nowhere else: a game install is an explicit -p:UnityEnginePath=
+       opt-in, never a default. Probing for one here made a contributor who owns the
+       game build the shipped CameraUnlock.Core.Unity.dll against the real DLLs while
+       CI built it against the stubs, which is exactly the drift the stub build
+       exists to prevent - and it is invisible until a member the stubs lack reaches
+       the compiler. -->
+  <!-- Without this a clean checkout built before 'pixi run setup' produces hundreds
+       of "the type or namespace UnityEngine could not be found" instead of one line
+       naming the task that fixes it. -->
+  <Target Name="ValidateReferenceStubs" BeforeTargets="ResolveAssemblyReferences">
+    <Error Condition="'$(UnityEnginePath)' == ''"
+           Text="Build references are not staged. Run 'pixi run setup', which builds the reference stubs into src/SuperliminalHeadTracking/libs." />
+    <!-- An incomplete directory is the other half, and it is the one that used to go
+         undiagnosed: a missing reference is only an MSB3245 WARNING, which
+         TreatWarningsAsErrors does not promote, so the build ran on to fail with
+         dozens of CS0246 naming types rather than the one thing that was wrong. Both
+         a half-finished libs/ wipe and -p:UnityEnginePath= aimed at a game's Managed
+         folder land here. -->
+    <Error Condition="'$(UnityEnginePath)' != '' And !Exists('$(UnityEnginePath)\BepInEx.dll')"
+           Text="UnityEnginePath '$(UnityEnginePath)' holds no BepInEx.dll. It must hold BepInEx.dll, 0Harmony.dll and the UnityEngine modules together; a game's Managed folder does not. Run 'pixi run setup' to stage the reference stubs." />
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\cameraunlock-core\csharp\src\CameraUnlock.Core\CameraUnlock.Core.csproj" />
+    <ProjectReference Include="..\..\cameraunlock-core\csharp\src\CameraUnlock.Core.Unity\CameraUnlock.Core.Unity.csproj">
+      <AdditionalProperties>UnityEnginePath=$(UnityEnginePath)</AdditionalProperties>
+    </ProjectReference>
+  </ItemGroup>
+
+  <!-- Every engine reference resolves from $(UnityEnginePath), which is the stub
+       directory 'pixi run setup' stages into libs/ unless an explicit
+       -p:UnityEnginePath= says otherwise. Binding these to a literal libs\ path
+       instead would leave the opt-in half-applied: CameraUnlock.Core.Unity would
+       build against the assemblies named on the command line while the plugin
+       next to it still compiled against the stubs. -->
+  <ItemGroup Condition="'$(UnityEnginePath)' != ''">
+    <Reference Include="BepInEx">
+      <HintPath>$(UnityEnginePath)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(UnityEnginePath)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(UnityEnginePath)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(UnityEnginePath)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(UnityEnginePath)\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(UnityEnginePath)\UnityEngine.InputLegacyModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>$(UnityEnginePath)\UnityEngine.PhysicsModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(UnityEnginePath)\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>$(UnityEnginePath)\UnityEngine.UI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.UIModule">
+      <HintPath>$(UnityEnginePath)\UnityEngine.UIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="libs\**" />
+    <None Remove="libs\**" />
+  </ItemGroup>
+</Project>
