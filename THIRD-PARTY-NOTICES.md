@@ -17,7 +17,7 @@ contained in this repository or in anything we publish.
 | HarmonyX | 2.9.0 | MIT | Inside the vendored BepInEx archive |
 | Mono.Cecil | 0.10.4 | MIT | Inside the vendored BepInEx archive |
 | MonoMod | 22.1.29.1 | MIT | Inside the vendored BepInEx archive |
-| cameraunlock-core | 2742a84cbcf5b95fc8ceed8cd511a4c16b0fdbe6 | MIT | Separate DLLs beside the plugin, in both ZIPs |
+| cameraunlock-core | 1178230424939db55e41c79a07ddf64329b7e528 | MIT | Separate DLLs beside the plugin, in both ZIPs |
 | OpenTrack | n/a | ISC | Not bundled; UDP protocol interoperability only |
 | Photon Unity Networking | as shipped by the game | Proprietary, Exit Games | Not bundled; two connection-state properties read by reflection |
 
@@ -663,6 +663,160 @@ SOFTWARE.
 
 ---
 
+## BepInEx (Unity IL2CPP)
+
+Vendored at `vendor/bepinex-il2cpp/`, shipped in the installer ZIP and used as
+the install-time source for the IL2CPP build of the game. Taken from the
+upstream CI build asset untouched; the upstream licence file ships beside it at
+`vendor/bepinex-il2cpp/LICENSE`.
+
+Superliminal ships as two different builds. The Steam copy runs Mono and is
+loaded by the BepInEx 5 archive above; the Xbox Game Pass copy is compiled with
+IL2CPP, which BepInEx 5 cannot load at all, so the installer carries this second
+archive and deploys whichever matches the copy being installed into.
+
+- Upstream: https://github.com/BepInEx/BepInEx
+- Build index: https://builds.bepinex.dev/projects/bepinex_be
+- Version: `6.0.0-be.785`
+- Commit: `6abdba47eeebe08552282e7a58ef0f4a9ab60b62`
+- SHA-256: `2a7cbf74d26abe4765c3e662db1721b923bac39849ebfef2ca5dc7de7e2d9b7f`
+
+Same licence as the BepInEx 5 archive (LGPL-2.1) and the full text is reproduced
+once, under **BepInEx** above; it is not repeated here. Loaded dynamically,
+never modified and never statically linked. Source for the unmodified library is
+available from the upstream repository above, per LGPL-2.1 section 6.
+
+---
+
+## Components inside the bundled BepInEx IL2CPP archive
+
+The IL2CPP archive contains HarmonyX, Harmony 2, Mono.Cecil and MonoMod, all
+covered by their sections above. Everything below is additional to the BepInEx 5
+archive: it ships only in `vendor/bepinex-il2cpp/BepInEx_UnityIL2CPP_x64.zip`,
+and each is a separate binary with its own copyright holder. None of it is
+modified by this project, and none of it is statically linked into anything we
+build; the mod's own DLLs call Il2CppInterop and nothing else in this list.
+
+Each licence text below is also shipped as its own file under `licenses/` in the
+installer ZIP, fetched verbatim from the project's own repository.
+
+### Il2CppInterop
+
+The managed-to-IL2CPP bridge. BepInEx 6 uses it to generate callable proxies for
+the game's own types at first launch, and this mod reaches `GameManager`
+through those proxies.
+
+- Upstream: https://github.com/BepInEx/Il2CppInterop
+- Licence: LGPL-3.0
+- Ships as: `BepInEx/core/Il2CppInterop.Common.dll`,
+  `Il2CppInterop.Generator.dll`, `Il2CppInterop.HarmonySupport.dll`,
+  `Il2CppInterop.Runtime.dll`
+- Full text: `licenses/Il2CppInterop-LICENSE.txt`
+
+This is LGPL **3.0**, a different licence from BepInEx's own LGPL-2.1, so its
+text is shipped separately rather than being covered by the BepInEx notice.
+Loaded dynamically and never modified; source for the unmodified library is
+available from the upstream repository above, per LGPL-3.0 section 4.
+
+### Cpp2IL
+
+Reads `GameAssembly.dll` and the IL2CPP metadata and recovers the type
+information Il2CppInterop generates from when the loader builds its support
+assemblies.
+
+- Upstream: https://github.com/SamboyCoding/Cpp2IL
+- Licence: MIT, Copyright (c) 2020 Sam Byass
+- Ships as: `BepInEx/core/Cpp2IL.Core.dll`, `LibCpp2IL.dll`,
+  `StableNameDotNet.dll`, `WasmDisassembler.dll`
+- Full text: `licenses/Cpp2IL-LICENSE.txt`
+
+### Disarm
+
+ARM64 disassembler used by Cpp2IL.
+
+- Upstream: https://github.com/SamboyCoding/Disarm
+- Licence: MIT, Copyright (c) 2025 Sam Byass
+- Ships as: `BepInEx/core/Disarm.dll`
+- Full text: `licenses/Disarm-LICENSE.txt`
+
+### AsmResolver
+
+PE and .NET metadata reading and writing, used while generating the interop
+assemblies.
+
+- Upstream: https://github.com/Washi1337/AsmResolver
+- Licence: MIT
+- Ships as: `BepInEx/core/AsmResolver.dll`, `AsmResolver.DotNet.dll`,
+  `AsmResolver.PE.dll`, `AsmResolver.PE.File.dll`
+- Full text: `licenses/AsmResolver-LICENSE.txt`
+
+### AssetRipper.CIL and AssetRipper.Primitives
+
+Two small support libraries. They are separate repositories from the AssetRipper
+application, which is licensed differently; these two are MIT and that is what
+ships here.
+
+- Upstream: https://github.com/AssetRipper/AssetRipper.CIL and
+  https://github.com/AssetRipper/AssetRipper.Primitives
+- Licence: MIT, Copyright (c) 2024 ds5678 and Copyright (c) 2022 ds5678
+- Ships as: `BepInEx/core/AssetRipper.CIL.dll`,
+  `BepInEx/core/AssetRipper.Primitives.dll`
+- Full text: `licenses/AssetRipper.CIL-LICENSE.txt`,
+  `licenses/AssetRipper.Primitives-LICENSE.txt`
+
+### Iced
+
+x86 and x64 disassembler used by Cpp2IL.
+
+- Upstream: https://github.com/icedland/iced
+- Licence: MIT
+- Ships as: `BepInEx/core/Iced.dll`
+- Full text: `licenses/Iced-LICENSE.txt`
+
+### Capstone.NET
+
+.NET bindings for the Capstone disassembly framework. BepInEx ships the
+`AssetRipper.Gee.External.Capstone` fork of it.
+
+- Upstream: https://github.com/ds5678/Capstone.NET
+- Licence: MIT, Copyright (c) Ahmed Garhy
+- Ships as: `BepInEx/core/Gee.External.Capstone.dll`
+- Full text: `licenses/Capstone.NET-LICENSE.txt`
+
+### Dobby
+
+Native function hooking library.
+
+- Upstream: https://github.com/jmpews/Dobby
+- Licence: Apache-2.0
+- Ships as: `BepInEx/core/dobby.dll`
+- Full text: `licenses/Dobby-LICENSE.txt`
+
+Redistributed unmodified, so there are no modification notices to carry under
+Apache-2.0 section 4(b).
+
+### SemanticVersioning
+
+Version parsing and comparison.
+
+- Upstream: https://github.com/adamreeve/semver.net
+- Licence: MIT, Copyright (c) Adam Reeve
+- Ships as: `BepInEx/core/SemanticVersioning.dll`
+- Full text: `licenses/SemanticVersioning-LICENSE.txt`
+
+### .NET runtime
+
+BepInEx 6 hosts its plugins on .NET 6 rather than on the game's own runtime, so
+the archive installs a private copy of the runtime into a `dotnet/` directory
+beside the game executable.
+
+- Upstream: https://github.com/dotnet/runtime
+- Licence: MIT, Copyright (c) .NET Foundation and Contributors
+- Ships as: the `dotnet/` directory inside the archive
+- Full text: `licenses/dotnet-runtime-LICENSE.txt`
+
+---
+
 ## cameraunlock-core
 
 Git submodule at `cameraunlock-core/`, compiled into `CameraUnlock.Core.dll` and
@@ -672,7 +826,7 @@ a distinct binary rather than being linked into ours, its notice travels with it
 It ships as `licenses/cameraunlock-core-LICENSE.txt` in both release ZIPs, and
 the text is reproduced here as well.
 
-- Pinned commit: `2742a84cbcf5b95fc8ceed8cd511a4c16b0fdbe6`
+- Pinned commit: `1178230424939db55e41c79a07ddf64329b7e528`
 
 ```
 MIT License

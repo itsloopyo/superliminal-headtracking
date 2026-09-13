@@ -25,12 +25,20 @@ namespace SuperliminalHeadTracking.Core
     /// FixedUpdate or LateUpdate against the clean transform, so a resize measured
     /// with the head turned is identical to one measured with it still.
     /// </summary>
+#if IL2CPP
+    public class HeadTrackingPlugin
+#else
     [BepInPlugin(PluginGUID, PluginName, PluginVersion)]
     public class HeadTrackingPlugin : BaseUnityPlugin
+#endif
     {
+#if IL2CPP
+        private BepInEx.Logging.ManualLogSource Logger { get { return Il2Cpp.Plugin.Logger; } }
+        private BepInEx.Configuration.ConfigFile Config { get { return Il2Cpp.Plugin.Settings; } }
+#endif
         public const string PluginGUID = "com.cameraunlock.superliminal.headtracking";
         public const string PluginName = "Superliminal Head Tracking";
-        public const string PluginVersion = "0.0.0";
+        public const string PluginVersion = "0.1.0";
 
         private const float StartupNotificationSeconds = 4f;
         private const float StatusNotificationSeconds = 1.5f;
@@ -103,7 +111,7 @@ namespace SuperliminalHeadTracking.Core
         private float _lastLeanAllowance = 1f;
         private Vector3 _requestedLean;
 
-        private void Awake()
+        internal void Awake()
         {
             Instance = this;
             _logInfo = Logger.LogInfo;
@@ -253,7 +261,7 @@ namespace SuperliminalHeadTracking.Core
                  + "[" + _inputHandler.YawModeKey + "/Ctrl+Shift+" + ChordHotkeys.FourthToggleLetter + "] Yaw";
         }
 
-        private void Update()
+        internal void Update()
         {
             if (!_initialized) return;
 
@@ -622,12 +630,12 @@ namespace SuperliminalHeadTracking.Core
                 _crosshair.AppliedOffset.x, _crosshair.AppliedOffset.y));
         }
 
-        private void OnGUI()
+        internal void OnGUI()
         {
             if (_notificationUI != null) _notificationUI.Draw();
         }
 
-        private void OnDestroy()
+        internal void OnDestroy()
         {
             Logger.LogInfo(PluginName + " shutting down...");
 

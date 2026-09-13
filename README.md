@@ -13,7 +13,7 @@ An unofficial head tracking mod for Superliminal that moves the view with your h
 
 ## Requirements
 
-- A purchased copy of [Superliminal on Steam](https://store.steampowered.com/app/1049410/Superliminal/).
+- Superliminal on [Steam](https://store.steampowered.com/app/1049410/Superliminal/) or the Xbox app / PC Game Pass. The Microsoft Store build tested is 1.0.6.0.
 - A tracking source: [OpenTrack](https://github.com/opentrack/opentrack/releases) with a webcam, a phone app that sends the OpenTrack UDP protocol, or any other OpenTrack compatible tracker.
 - 64-bit Windows 10 or 11.
 
@@ -28,7 +28,7 @@ Download [Lopari](https://lopari.app), choose **Superliminal**, and click
 
 1. Download the installer ZIP from the [Releases page](https://github.com/itsloopyo/superliminal-headtracking/releases).
 2. Extract it anywhere.
-3. Double-click `install.cmd`. It finds Superliminal, installs BepInEx 5 if the game does not already have it, and copies the mod DLLs into place.
+3. Double-click `install.cmd`. It finds the installed copies and selects BepInEx 5 for Steam or BepInEx 6 for Xbox / Game Pass, then installs the matching mod files.
 4. Configure OpenTrack to output UDP to `127.0.0.1:4242`.
 5. Launch the game.
 
@@ -45,17 +45,22 @@ or by passing the path as an argument:
 .\install.cmd "D:\Games\Superliminal"
 ```
 
-The folder is the one holding `SuperliminalSteam.exe`.
+The folder holds `SuperliminalSteam.exe` on Steam or `Superliminal.exe` on Xbox / Game Pass.
+
+On Game Pass, the first launch generates support assemblies and may download Unity support libraries. Allow it to finish, then use the game's normal sign-in prompt.
 
 ### Manual Installation
 
-To place the files by hand:
+Use the installer ZIP for manual installation too. Select the files for your copy:
 
-1. Download [BepInEx 5.4.23.5, x64](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.5) (`BepInEx_win_x64_5.4.23.5.zip`) and extract it into the Superliminal folder, so `winhttp.dll`, `doorstop_config.ini` and a `BepInEx` folder sit next to `SuperliminalSteam.exe`.
-2. Run the game once and close it, so BepInEx creates its folder structure.
-3. Copy `SuperliminalHeadTracking.dll`, `CameraUnlock.Core.dll` and `CameraUnlock.Core.Unity.dll` into `BepInEx/plugins/`.
+| Copy | Loader archive inside the ZIP | Mod files |
+| --- | --- | --- |
+| Steam | `vendor/bepinex/BepInEx_win_x64.zip` | The three DLLs in `plugins/` |
+| Xbox / Game Pass | `vendor/bepinex-il2cpp/BepInEx_UnityIL2CPP_x64.zip` | The two DLLs in `plugins-il2cpp/` |
 
-The Nexus ZIP is already laid out this way: extract it over the game folder and the three DLLs land in `BepInEx/plugins/`. It does not contain BepInEx itself, so step 1 still applies.
+Extract the selected loader archive next to the game executable. Copy the selected mod DLLs into `BepInEx/plugins/`. Keep the two builds separate.
+
+The Nexus ZIP contains the Steam plugin only and requires BepInEx 5. Xbox / Game Pass users need the installer ZIP.
 
 ## Setting Up OpenTrack
 
@@ -173,8 +178,8 @@ A missing entry falls back to its default, so a config file written by an older 
 
 **Mod not loading:**
 
-- Check that `winhttp.dll` and `doorstop_config.ini` sit next to `SuperliminalSteam.exe`, and that the three mod DLLs are in `BepInEx/plugins/`.
-- Make sure you installed the x64 build of BepInEx 5. The x86 build will not load, and BepInEx 6 has a different layout this mod does not expect.
+- Check that `winhttp.dll` and `doorstop_config.ini` sit next to the game executable and that the matching mod DLLs are in `BepInEx/plugins/`.
+- Use BepInEx 5 for Steam and the bundled BepInEx 6 IL2CPP build for Xbox / Game Pass. Both must be x64.
 - Open `BepInEx/LogOutput.log` and look for the `SuperliminalHeadTracking` startup line. If the mod stayed dormant it says so and why.
 
 **No tracking response:**
@@ -208,7 +213,7 @@ Run `uninstall.cmd`. This removes the mod DLLs. BepInEx is only removed if the i
 
 ## Building from Source
 
-Prerequisites: [pixi](https://pixi.sh) and the .NET SDK. The build needs no game install, it compiles against reference stubs.
+Prerequisites: [pixi](https://pixi.sh) and the .NET SDK. Both builds use repository stubs and published reference assemblies, with no game installation required.
 
 ```powershell
 git clone --recurse-submodules https://github.com/itsloopyo/superliminal-headtracking.git

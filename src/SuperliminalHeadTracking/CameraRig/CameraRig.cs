@@ -97,16 +97,31 @@ namespace SuperliminalHeadTracking.CameraRig
 
         public void Enable()
         {
+#if IL2CPP
+            _preCull = new Il2Cpp.CameraCallbacks("onPreCull", OnPreCull);
+            _postRender = new Il2Cpp.CameraCallbacks("onPostRender", OnPostRender);
+#else
             Camera.onPreCull += OnPreCull;
             Camera.onPostRender += OnPostRender;
+#endif
         }
 
         public void Disable()
         {
+#if IL2CPP
+            _preCull.Remove();
+            _postRender.Remove();
+#else
             Camera.onPreCull -= OnPreCull;
             Camera.onPostRender -= OnPostRender;
+#endif
             ClearPose();
         }
+
+#if IL2CPP
+        private Il2Cpp.CameraCallbacks _preCull;
+        private Il2Cpp.CameraCallbacks _postRender;
+#endif
 
         /// <summary>
         /// Hands the rig the pose to draw this frame with. Called once per frame from

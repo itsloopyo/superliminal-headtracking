@@ -34,6 +34,10 @@ set "BEPINEX_VENDOR_ZIP_NAME="
 set "BEPINEX_SUBFOLDER="
 :: Subfolder under BepInEx\plugins\ to deploy into. Empty lays the DLLs flat.
 set "PLUGIN_SUBFOLDER="
+set "IL2CPP_VENDOR_DIR_NAME=bepinex-il2cpp"
+set "IL2CPP_VENDOR_ZIP_NAME=BepInEx_UnityIL2CPP_x64.zip"
+set "IL2CPP_PLUGIN_DIR_NAME=plugins-il2cpp"
+set "IL2CPP_MOD_DLLS=SuperliminalHeadTracking.dll CameraUnlock.Core.dll"
 :: Post-install help text. `&echo ` starts each further line.
 set "MOD_CONTROLS=Controls:&echo   End       - Toggle head tracking on/off&echo   Page Up   - Cycle tracking mode (full / rotation-only / position-only)&echo   Page Down - Toggle yaw mode (world-locked / camera-local)&echo.&echo   No nav cluster? Chords: Ctrl+Shift+ Y=Toggle G=Mode H=Yaw"
 :: --- END CONFIG BLOCK ---

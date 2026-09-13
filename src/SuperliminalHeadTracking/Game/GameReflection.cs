@@ -40,9 +40,9 @@ namespace SuperliminalHeadTracking.Game
         private static Action<string> _log;
         private static Action<string> _logError;
 
-        private static FieldInfo _gmInstance;
-        private static FieldInfo _gmPlayerCamera;
-        private static FieldInfo _gmPm;
+        private static GameField _gmInstance;
+        private static GameField _gmPlayerCamera;
+        private static GameField _gmPm;
         private static PropertyInfo _pmCanControl;
 
         private static PropertyInfo _photonIsConnected;
@@ -50,11 +50,11 @@ namespace SuperliminalHeadTracking.Game
         private static bool _photonTypeFound;
 
         private static Type _resizeScriptType;
-        private static FieldInfo _resizeLayerMaskIgnorePlayer;
-        private static FieldInfo _resizeLayerMaskIgnoreGrabbed;
+        private static GameField _resizeLayerMaskIgnorePlayer;
+        private static GameField _resizeLayerMaskIgnoreGrabbed;
 
         private static Type _portalHitTestLinkType;
-        private static FieldInfo _portalHitTestLinkPortal;
+        private static GameField _portalHitTestLinkPortal;
         private static PropertyInfo _portalCanProjectThroughMe;
         private static MethodInfo _portalHelperTransformRay;
         private static MethodInfo _portalHelperFromToScale;
@@ -156,7 +156,12 @@ namespace SuperliminalHeadTracking.Game
 
         private static bool PhotonResolved
         {
+#if IL2CPP
+            // The Microsoft Store 1.0.6.0 build has no Photon or multiplayer types.
+            get { return !_photonTypeFound || (_photonIsConnected != null && _photonInRoom != null); }
+#else
             get { return _photonIsConnected != null && _photonInRoom != null; }
+#endif
         }
 
         /// <summary>
@@ -169,9 +174,9 @@ namespace SuperliminalHeadTracking.Game
         {
             if (_pmCanControl != null) return true;
 
-            _gmInstance = gameManager.GetField("GM", BindingFlags.Public | BindingFlags.Static);
-            _gmPlayerCamera = gameManager.GetField("playerCamera", BindingFlags.Public | BindingFlags.Instance);
-            _gmPm = gameManager.GetField("PM", BindingFlags.Public | BindingFlags.Instance);
+            _gmInstance = GameField.Find(gameManager, "GM", BindingFlags.Public | BindingFlags.Static);
+            _gmPlayerCamera = GameField.Find(gameManager, "playerCamera", BindingFlags.Public | BindingFlags.Instance);
+            _gmPm = GameField.Find(gameManager, "PM", BindingFlags.Public | BindingFlags.Instance);
 
             if (_gmInstance == null || _gmPlayerCamera == null || _gmPm == null)
             {
@@ -343,7 +348,7 @@ namespace SuperliminalHeadTracking.Game
             if (_portalHitTestLinkType == null || portalHelper == null || portal == null) return;
             if (!typeof(UnityEngine.Object).IsAssignableFrom(portal)) return;
 
-            _portalHitTestLinkPortal = _portalHitTestLinkType.GetField(
+            _portalHitTestLinkPortal = GameField.Find(_portalHitTestLinkType,
                 "Portal", BindingFlags.Public | BindingFlags.Instance);
             if (_portalHitTestLinkPortal == null
                 || !portal.IsAssignableFrom(_portalHitTestLinkPortal.FieldType)) return;
@@ -380,7 +385,7 @@ namespace SuperliminalHeadTracking.Game
             farSideScale = 1f;
             if (!PortalTracingAvailable || hitCollider == null) return false;
 
-            Component link = hitCollider.GetComponent(_portalHitTestLinkType);
+            Component link = GameObjects.GetComponent(hitCollider, _portalHitTestLinkType);
             if (link == null) return false;
 
             var portal = (UnityEngine.Object)_portalHitTestLinkPortal.GetValue(link);
@@ -471,6 +476,9 @@ namespace SuperliminalHeadTracking.Game
         {
             get
             {
+#if IL2CPP
+                if (!_photonTypeFound) return false;
+#endif
                 if (_photonIsConnected == null || _photonInRoom == null) return true;
                 return (bool)_photonIsConnected.GetValue(null, null)
                        || (bool)_photonInRoom.GetValue(null, null);
@@ -513,7 +521,7 @@ namespace SuperliminalHeadTracking.Game
             {
                 if (_resizeScriptType == null) return null;
                 Camera cam = PlayerCamera;
-                return cam == null ? null : cam.GetComponent(_resizeScriptType);
+                return cam == null ? null : GameObjects.GetComponent(cam, _resizeScriptType);
             }
         }
 
@@ -566,9 +574,9 @@ namespace SuperliminalHeadTracking.Game
         }
 
         /// <summary>A private instance int field, or null. Same reason.</summary>
-        private static FieldInfo IntField(Type owner, string name)
+        private static GameField IntField(Type owner, string name)
         {
-            FieldInfo field = owner.GetField(name, BindingFlags.NonPublic | BindingFlags.Instance);
+            GameField field = GameField.Find(owner, name, BindingFlags.NonPublic | BindingFlags.Instance);
             return field != null && field.FieldType == typeof(int) ? field : null;
         }
 

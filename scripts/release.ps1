@@ -32,6 +32,8 @@ $ErrorActionPreference = "Stop"
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectDir = Split-Path -Parent $scriptDir
 $csprojPath = Join-Path $projectDir "src\SuperliminalHeadTracking\SuperliminalHeadTracking.csproj"
+$il2cppCsprojPath = Join-Path $projectDir "src\SuperliminalHeadTracking.Il2Cpp\SuperliminalHeadTracking.Il2Cpp.csproj"
+$pluginPath = Join-Path $projectDir "src\SuperliminalHeadTracking\Core\HeadTrackingPlugin.cs"
 $changelogPath = Join-Path $projectDir "CHANGELOG.md"
 $manifestPath = Join-Path $projectDir "launcher-manifest.json"
 $installCmdPath = Join-Path $projectDir "scripts\install.cmd"
@@ -205,6 +207,10 @@ if (-not (git tag -l)) {
 # stale install.
 Write-Host "Updating version to $Version..." -ForegroundColor Cyan
 Set-CsprojVersion $csprojPath $Version
+Set-CsprojVersion $il2cppCsprojPath $Version
+$pluginText = [IO.File]::ReadAllText($pluginPath)
+$pluginText = $pluginText -replace 'PluginVersion = "[^"]+"', "PluginVersion = `"$Version`""
+[IO.File]::WriteAllText($pluginPath, $pluginText)
 
 $manifestJson = Get-Content $manifestPath -Raw | ConvertFrom-Json
 $manifestJson.mod_info.version = $Version
@@ -227,7 +233,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "Committing changes..." -ForegroundColor Cyan
-git add $csprojPath $changelogPath $manifestPath $installCmdPath
+git add $csprojPath $il2cppCsprojPath $pluginPath $changelogPath $manifestPath $installCmdPath
 git commit -m "Release v$Version"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Commit failed" -ForegroundColor Red

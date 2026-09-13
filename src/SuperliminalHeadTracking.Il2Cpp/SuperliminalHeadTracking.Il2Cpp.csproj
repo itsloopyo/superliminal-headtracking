@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>SuperliminalHeadTracking</AssemblyName>
+    <Version>0.1.0</Version>
+    <DefineConstants>$(DefineConstants);IL2CPP</DefineConstants>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Published Unity references share the scalar API with the runtime proxies.
+         Type arguments, native fields and camera callbacks cross through adapters. -->
+    <PackageReference Include="BepInEx.Unity.IL2CPP" Version="6.0.0-be.753" />
+    <PackageReference Include="UnityEngine.Modules" Version="2020.3.35" />
+    <ProjectReference Include="../../cameraunlock-core/csharp/src/CameraUnlock.Core/CameraUnlock.Core.csproj" />
+    <ProjectReference Include="../Stubs.UnityEngine.UI/Stubs.UnityEngine.UI.csproj" Private="false" />
+    <Compile Include="../SuperliminalHeadTracking/**/*.cs" Exclude="../SuperliminalHeadTracking/obj/**;../SuperliminalHeadTracking/bin/**;../SuperliminalHeadTracking/libs/**" />
+    <Compile Include="../../cameraunlock-core/csharp/src/CameraUnlock.Core.Unity/Extensions/ChordHotkeys.cs" />
+    <Compile Include="../../cameraunlock-core/csharp/src/CameraUnlock.Core.Unity/Tracking/TransformFrameState.cs" />
+    <Compile Include="../../cameraunlock-core/csharp/src/CameraUnlock.Core.Unity/Utilities/PerFrameCache.cs" />
+    <Compile Include="../../cameraunlock-core/csharp/src/CameraUnlock.Core.Unity/UI/NotificationUI.cs" />
+    <Compile Include="../../cameraunlock-core/csharp/src/CameraUnlock.Core.Unity/UI/NotificationType.cs" />
+  </ItemGroup>
+</Project>

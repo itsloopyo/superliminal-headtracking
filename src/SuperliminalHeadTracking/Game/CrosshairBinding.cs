@@ -77,7 +77,7 @@ namespace SuperliminalHeadTracking.Game
             if (Time.realtimeSinceStartup < _nextSearchTime) return false;
             _nextSearchTime = Time.realtimeSinceStartup + SearchInterval;
 
-            Object found = Object.FindObjectOfType(GameReflection.CursorScriptType);
+            Object found = GameObjects.Find(GameReflection.CursorScriptType);
             if (found == null) return false;
 
             _cursorScript = (Component)found;
@@ -220,7 +220,7 @@ namespace SuperliminalHeadTracking.Game
 
         private RawImage GetRawImageField(string fieldName)
         {
-            FieldInfo field = _cursorScript.GetType().GetField(
+            GameField field = GameField.Find(GameReflection.CursorScriptType,
                 fieldName, BindingFlags.Public | BindingFlags.Instance);
             return field == null ? null : field.GetValue(_cursorScript) as RawImage;
         }

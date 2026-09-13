@@ -116,7 +116,11 @@ namespace SuperliminalHeadTracking.Game
             if (_resolved) return _getIgnoreLayerCollision;
             _resolved = true;
 
+#if IL2CPP
+            Type physics = typeof(Il2Cpp.PhysicsQueries);
+#else
             Type physics = typeof(Physics);
+#endif
             _getIgnoreLayerCollision = physics.GetMethod(
                 "GetIgnoreLayerCollision",
                 BindingFlags.Public | BindingFlags.Static,
