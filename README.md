@@ -13,7 +13,7 @@ An unofficial head tracking mod for Superliminal that moves the view with your h
 
 ## Requirements
 
-- Superliminal on [Steam](https://store.steampowered.com/app/1049410/Superliminal/) or the Xbox app / PC Game Pass. The Microsoft Store build tested is 1.0.6.0.
+- Superliminal on [Steam](https://store.steampowered.com/app/1049410/Superliminal/) or Xbox Game Pass. The package version tested is 1.0.6.0.
 - A tracking source: [OpenTrack](https://github.com/opentrack/opentrack/releases) with a webcam, a phone app that sends the OpenTrack UDP protocol, or any other OpenTrack compatible tracker.
 - 64-bit Windows 10 or 11.
 
@@ -28,7 +28,7 @@ Download [Lopari](https://lopari.app), choose **Superliminal**, and click
 
 1. Download the installer ZIP from the [Releases page](https://github.com/itsloopyo/superliminal-headtracking/releases).
 2. Extract it anywhere.
-3. Double-click `install.cmd`. It finds the installed copies and selects BepInEx 5 for Steam or BepInEx 6 for Xbox / Game Pass, then installs the matching mod files.
+3. Double-click `install.cmd`. It finds the installed copies and selects BepInEx 5 for Steam or BepInEx 6 for Xbox Game Pass, then installs the matching mod files.
 4. Configure OpenTrack to output UDP to `127.0.0.1:4242`.
 5. Launch the game.
 
@@ -45,9 +45,9 @@ or by passing the path as an argument:
 .\install.cmd "D:\Games\Superliminal"
 ```
 
-The folder holds `SuperliminalSteam.exe` on Steam or `Superliminal.exe` on Xbox / Game Pass.
+The folder holds `SuperliminalSteam.exe` on Steam or `Superliminal.exe` on Xbox Game Pass.
 
-On Game Pass, the first launch generates support assemblies and may download Unity support libraries. Allow it to finish, then use the game's normal sign-in prompt.
+On Xbox Game Pass, the first launch generates support assemblies and may download Unity support libraries. Allow it to finish, then use the game's normal sign-in prompt.
 
 ### Manual Installation
 
@@ -56,11 +56,11 @@ Use the installer ZIP for manual installation too. Select the files for your cop
 | Copy | Loader archive inside the ZIP | Mod files |
 | --- | --- | --- |
 | Steam | `vendor/bepinex/BepInEx_win_x64.zip` | The three DLLs in `plugins/` |
-| Xbox / Game Pass | `vendor/bepinex-il2cpp/BepInEx_UnityIL2CPP_x64.zip` | The two DLLs in `plugins-il2cpp/` |
+| Xbox Game Pass | `vendor/bepinex-il2cpp/BepInEx_UnityIL2CPP_x64.zip` | The two DLLs in `plugins-il2cpp/` |
 
 Extract the selected loader archive next to the game executable. Copy the selected mod DLLs into `BepInEx/plugins/`. Keep the two builds separate.
 
-The Nexus ZIP contains the Steam plugin only and requires BepInEx 5. Xbox / Game Pass users need the installer ZIP.
+The Nexus ZIP contains the Steam plugin only and requires BepInEx 5. Xbox Game Pass users need the installer ZIP.
 
 ## Setting Up OpenTrack
 
@@ -179,7 +179,7 @@ A missing entry falls back to its default, so a config file written by an older 
 **Mod not loading:**
 
 - Check that `winhttp.dll` and `doorstop_config.ini` sit next to the game executable and that the matching mod DLLs are in `BepInEx/plugins/`.
-- Use BepInEx 5 for Steam and the bundled BepInEx 6 IL2CPP build for Xbox / Game Pass. Both must be x64.
+- Use BepInEx 5 for Steam and the bundled BepInEx 6 IL2CPP build for Xbox Game Pass. Both must be x64.
 - Open `BepInEx/LogOutput.log` and look for the `SuperliminalHeadTracking` startup line. If the mod stayed dormant it says so and why.
 
 **No tracking response:**
