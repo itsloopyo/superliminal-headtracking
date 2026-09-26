@@ -27,8 +27,13 @@ package = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/package-rele
 clean = "dotnet clean src/SuperliminalHeadTracking/SuperliminalHeadTracking.csproj"
 # The config tests, among them the differential test in tests/config_differential, which holds
 # the legacy import to the v0.2.0 reader it replaces on every published build's first-run file and
-# on core's mutation corpus. What the mod does to the camera is still checked by an in-game pass.
-test = { cmd = "dotnet test tests/SuperliminalHeadTracking.Tests/SuperliminalHeadTracking.Tests.csproj -c Release", depends-on = ["build"] }
+# on core's mutation corpus, then core's canonical config lint over the committed file and every file
+# the test migrated. What the mod does to the camera is still checked by an in-game pass.
+test = { cmd = "dotnet test tests/SuperliminalHeadTracking.Tests/SuperliminalHeadTracking.Tests.csproj -c Release && node tests/config_differential/lint-migrated.mjs tests/SuperliminalHeadTracking.Tests/bin/Release/net48/migrated", depends-on = ["build"] }
+# Rewrites config/CameraUnlock.ini from the config table after a change to a row, a comment or a
+# default. The render test compares the two on every `pixi run test`, so the committed file cannot
+# drift from the code.
+render-config = { cmd = "dotnet test tests/SuperliminalHeadTracking.Tests/SuperliminalHeadTracking.Tests.csproj -c Release --filter FullyQualifiedName~ConfigTests.CommittedFileIsTheRenderedDefaults && node cameraunlock-core/scripts/encode-seed.mjs", env = { CAMERAUNLOCK_RENDER_CONFIG = "write" }, depends-on = ["build"] }
 # Preflight diagnostics. Nothing depends on them: they read what is committed
 # (and, for the manifest, the last ZIP `package` wrote) and report.
 validate-manifest = "node cameraunlock-core/scripts/validate-manifest.mjs ."

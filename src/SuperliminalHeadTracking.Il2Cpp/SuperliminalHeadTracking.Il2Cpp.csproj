@@ -16,7 +16,7 @@
     <ProjectReference Include="../../cameraunlock-core/csharp/src/CameraUnlock.Core/CameraUnlock.Core.csproj" />
     <ProjectReference Include="../Stubs.UnityEngine.UI/Stubs.UnityEngine.UI.csproj" Private="false" />
     <Compile Include="../SuperliminalHeadTracking/**/*.cs" Exclude="../SuperliminalHeadTracking/obj/**;../SuperliminalHeadTracking/bin/**;../SuperliminalHeadTracking/libs/**" />
-    <Compile Include="../../cameraunlock-core/csharp/src/CameraUnlock.Core.Unity/Extensions/ChordHotkeys.cs" />
+    <Compile Include="../../cameraunlock-core/csharp/src/CameraUnlock.Core.Unity/Extensions/KeyBindingInput.cs" />
     <Compile Include="../../cameraunlock-core/csharp/src/CameraUnlock.Core.Unity/Tracking/TransformFrameState.cs" />
     <Compile Include="../../cameraunlock-core/csharp/src/CameraUnlock.Core.Unity/Utilities/PerFrameCache.cs" />
     <Compile Include="../../cameraunlock-core/csharp/src/CameraUnlock.Core.Unity/UI/NotificationUI.cs" />

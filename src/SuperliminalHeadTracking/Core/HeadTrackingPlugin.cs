@@ -1,11 +1,13 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
 using BepInEx;
+using CameraUnlock.Core.Config;
 using CameraUnlock.Core.Data;
 using CameraUnlock.Core.Math;
 using CameraUnlock.Core.Processing;
 using CameraUnlock.Core.Protocol;
 using CameraUnlock.Core.Tracking;
-using CameraUnlock.Core.Unity.Extensions;
 using CameraUnlock.Core.Unity.UI;
 using HarmonyLib;
 using SuperliminalHeadTracking.Aim;
@@ -43,6 +45,7 @@ namespace SuperliminalHeadTracking.Core
 
         private const float StartupNotificationSeconds = 4f;
         private const float StatusNotificationSeconds = 1.5f;
+        private const float ConfigNotificationSeconds = 8f;
         private const float AimGeometryLogInterval = 1f;
 
         // How long the aim mask has to stay unreadable before it is worth saying so.
@@ -55,7 +58,8 @@ namespace SuperliminalHeadTracking.Core
         public static HeadTrackingPlugin Instance { get; private set; }
         public bool TrackingEnabled { get; private set; }
 
-        private ModConfig _config;
+        private SuperliminalConfig _config;
+        private ConfigOwner<SuperliminalConfig> _configOwner;
         private OpenTrackReceiver _receiver;
         private ZoomCompensatedSource _trackingSource;
         private TrackingProcessor _processor;
@@ -119,11 +123,10 @@ namespace SuperliminalHeadTracking.Core
             _logError = Logger.LogError;
             Logger.LogInfo(PluginName + " v" + PluginVersion + " initializing...");
 
-            _config = LegacyConfigMap.ToRuntime(LegacyConfigReader.Read(Config, out _));
-            // The reader writes nothing; this is the write BepInEx's Bind made on every start,
-            // which creates the .cfg on the first one.
-            Config.SaveOnConfigSet = true;
-            Config.Save();
+            // Built before the config loads, so the owner's status sink can reach the player
+            // when the file cannot be read, imported or created.
+            _notificationUI = new NotificationUI();
+            LoadConfig();
 
             GameReflection.Initialize(_logInfo, _logError);
 
@@ -133,7 +136,6 @@ namespace SuperliminalHeadTracking.Core
             BuildGameStateDetector();
             BuildInput();
 
-            _notificationUI = new NotificationUI();
             _windowPlacement = new WindowPlacement(_logInfo);
             _harmony = new Harmony(PluginGUID);
 
@@ -143,7 +145,7 @@ namespace SuperliminalHeadTracking.Core
             // it, and the contradiction is what a user reads when they come to the log
             // asking why there is no tracking.
             bool listening = _receiver.Start(_config.UdpPort);
-            TrackingEnabled = _config.EnabledOnStartup;
+            TrackingEnabled = _config.EnableOnStartup;
             _initialized = true;
 
             Logger.LogInfo(PluginName + " initialized. Tracking "
@@ -153,12 +155,95 @@ namespace SuperliminalHeadTracking.Core
                 Logger.LogInfo("Listening on UDP port " + _config.UdpPort);
             }
 
-            if (_config.ShowStartupNotification)
+            // A config the owner could not load or create has already put its message up, and the
+            // startup toast would replace it.
+            if (_config.ShowStartupNotification && !_notificationUI.IsDisplaying)
             {
                 string status = TrackingEnabled ? "Head Tracking: ON" : "Head Tracking: OFF";
                 _notificationUI.ShowNotification(status + "\n" + BuildHotkeyInfo(),
                     StartupNotificationSeconds);
             }
+        }
+
+        /// <summary>
+        /// The settings live in BepInEx\config\CameraUnlock.ini, read and written by core's config
+        /// owner, with rows set to default following the player's Defaults.ini. Nothing is bound
+        /// on the plugin's Config, so ConfigurationManager does not list them. While
+        /// CameraUnlock.ini is absent the owner imports the plugin's .cfg, the file every earlier
+        /// build read, through the frozen v0.2.0 reader on a ConfigFile of its own, and never
+        /// writes that file.
+        /// </summary>
+        private void LoadConfig()
+        {
+            _configOwner = new ConfigOwner<SuperliminalConfig>(new ConfigOwnerOptions<SuperliminalConfig>
+            {
+                Path = ConfigPath,
+                Table = SuperliminalConfig.Table(),
+                Import = LegacyConfigImport.Create(),
+                LegacySourcePath = Config.ConfigFilePath,
+                Header = new RenderHeader(SuperliminalConfig.DisplayName),
+                Defaults = DefaultsFile.PerUser(),
+                StatusSink = ShowConfigMessage
+            });
+
+            _loadMessages = string.Empty;
+            ConfigLoadResult<SuperliminalConfig> loaded = _configOwner.Load();
+            _loadMessages = null;
+            _config = loaded.Config;
+
+            // The owner writes each diagnostic as "<path>: <description>" among lines that only
+            // report what it did, so the complaints are picked out by their text.
+            var complaints = new HashSet<string>();
+            foreach (CanonicalDiagnostic diagnostic in loaded.Diagnostics)
+                complaints.Add(ConfigPath + ": " + diagnostic.Describe());
+            bool usable = loaded.Status == ConfigLoadStatus.Canonical
+                          || loaded.Status == ConfigLoadStatus.Migrated
+                          || loaded.Status == ConfigLoadStatus.Created;
+            foreach (string line in loaded.Log)
+            {
+                if (usable && !complaints.Contains(line)) Logger.LogInfo(line);
+                else Logger.LogWarning(line);
+            }
+            Logger.LogInfo("Config " + ConfigPath + ": " + loaded.Status);
+        }
+
+        private static string ConfigPath
+        {
+            get { return Path.Combine(Paths.ConfigPath, "CameraUnlock.ini"); }
+        }
+
+        // Non-null while Load runs. Load can hand the sink two messages, the config file's and
+        // then one about Defaults.ini, and the notification shows one message at a time, so the
+        // second is shown beneath the first rather than in its place.
+        private string _loadMessages;
+
+        private void ShowConfigMessage(string message)
+        {
+            if (_loadMessages != null)
+            {
+                _loadMessages = _loadMessages.Length == 0 ? message : _loadMessages + "\n" + message;
+                message = _loadMessages;
+            }
+            _notificationUI.ShowNotification(message, NotificationType.Warning, ConfigNotificationSeconds);
+        }
+
+        /// <summary>
+        /// Called after the new value is already applied. A save that fails is logged, the owner
+        /// shows the player why, and the session keeps the new value.
+        /// </summary>
+        private void SaveConfig(Action<SuperliminalConfig> change)
+        {
+            ConfigSaveResult saved = _configOwner.Save(change);
+            if (saved.Status == ConfigSaveStatus.Saved)
+            {
+                // A row that held default and now holds a value, so it stops following
+                // Defaults.ini in this game.
+                foreach (string line in saved.Log) Logger.LogInfo(line);
+                return;
+            }
+            foreach (string line in saved.Log) Logger.LogWarning(line);
+            Logger.LogWarning(ConfigPath + ": " + saved.Status + ": " + saved.Reason
+                              + " The change applies to this session only.");
         }
 
         private void BuildPipeline()
@@ -180,11 +265,10 @@ namespace SuperliminalHeadTracking.Core
                 //
                 // Yaw and roll are NOT negated here, against the fleet's usual vote.
                 // Negating them was tried in game and turned the view the wrong way on
-                // both axes.
+                // both axes. This and every multiplier at 1 is the axis conversion every
+                // published build applied; none of it is a setting.
                 Sensitivity = new SensitivitySettings(
-                    _config.YawSensitivity,
-                    _config.PitchSensitivity,
-                    _config.RollSensitivity,
+                    1.0f, 1.0f, 1.0f,
                     invertYaw: false,
                     invertPitch: true,
                     invertRoll: false),
@@ -197,14 +281,13 @@ namespace SuperliminalHeadTracking.Core
             // camera, which is after the processor's asymmetric clamp. Setting InvertZ
             // instead would land ahead of that clamp and hand the forward lean the
             // 0.10m backward budget.
-            PositionSettings positionSettings = PositionSettings.Symmetric(
-                _config.PositionSensitivityX,
-                _config.PositionSensitivityY,
-                _config.PositionSensitivityZ,
-                _config.PositionLimitX,
-                _config.PositionLimitY,
-                _config.PositionLimitZ,
-                _config.PositionLimitZBack,
+            PositionSettings positionSettings = new PositionSettings(
+                1.0f, 1.0f, 1.0f,
+                _config.Position.LimitX,
+                _config.Position.LimitY,
+                _config.Position.LimitYDown,
+                _config.Position.LimitZ,
+                _config.Position.LimitZBack,
                 _config.LocalSmoothing,
                 _config.RemoteSmoothing,
                 invertX: false, invertY: false, invertZ: false);
@@ -219,9 +302,9 @@ namespace SuperliminalHeadTracking.Core
             _pipeline = new TrackingPipeline(_trackingSource, _processor, _interpolator,
                 _positionProcessor, _positionInterpolator);
 
-            SetTrackingMode(_config.PositionEnabled
-                ? TrackingMode.RotationAndPosition
-                : TrackingMode.RotationOnly);
+            // The pair always names a mode: the table reads a pair that names none as its default.
+            // Seeding it from the file makes the first cycle press move on from the saved mode.
+            SetTrackingMode(TrackingModeChannels.Decode(_config.RotationEnabled, _config.PositionEnabled).Value);
         }
 
         private void BuildRig()
@@ -252,7 +335,7 @@ namespace SuperliminalHeadTracking.Core
 
         private void BuildInput()
         {
-            _inputHandler = new InputHandler(_config);
+            _inputHandler = new InputHandler(_config, Logger.LogWarning);
             _inputHandler.OnTogglePressed += HandleToggle;
             _inputHandler.OnCycleTrackingModePressed += HandleCycleTrackingMode;
             _inputHandler.OnToggleYawModePressed += HandleToggleYawMode;
@@ -260,9 +343,9 @@ namespace SuperliminalHeadTracking.Core
 
         private string BuildHotkeyInfo()
         {
-            return "[" + _inputHandler.ToggleKey + "/Ctrl+Shift+" + ChordHotkeys.ToggleLetter + "] Toggle, "
-                 + "[" + _inputHandler.CycleTrackingModeKey + "/Ctrl+Shift+" + ChordHotkeys.PositionLetter + "] Cycle Mode, "
-                 + "[" + _inputHandler.YawModeKey + "/Ctrl+Shift+" + ChordHotkeys.FourthToggleLetter + "] Yaw";
+            return "[" + _config.ToggleKeyName + "] Toggle, "
+                 + "[" + _config.CycleTrackingModeKeyName + "] Cycle Mode, "
+                 + "[" + _config.YawModeKeyName + "] Yaw";
         }
 
         internal void Update()
@@ -427,11 +510,6 @@ namespace SuperliminalHeadTracking.Core
             _cachedIsRemoteConnection = isRemoteConnection;
             _hasCachedConnectionLocality = true;
 
-            // Off the processor's own values, not off the config entries. The two are
-            // the same until someone edits the config while the game is running, and
-            // then the entries carry the new number while the processor keeps the one
-            // it was built with - so reading the config here would print a smoothing
-            // value that is not the one being applied.
             float effective = SmoothingUtils.GetEffectiveSmoothing(
                 _processor.LocalSmoothing, _processor.RemoteSmoothing, isRemoteConnection);
             Logger.LogInfo("Tracker source is " + (isRemoteConnection ? "remote" : "local")
@@ -514,30 +592,21 @@ namespace SuperliminalHeadTracking.Core
 
         /// <summary>
         /// The crosshair is placed from here, inside the rig's applied window, so it
-        /// is projected through the same camera the frame is drawn through.
+        /// is projected through the same camera the frame is drawn through. The game's
+        /// crosshair always follows the aim while the head moves the view; no setting
+        /// turns that off.
         /// </summary>
         private void OnCameraApplied(AppliedFrame frame)
         {
             _reticle.MeasureEngineDelta = _config.LogAimGeometry;
+            _reticle.OnApplied(frame);
 
-            if (_config.MoveCrosshair)
+            if (!_loggedCrosshair && _reticle.IsActive)
             {
-                _reticle.OnApplied(frame);
-
-                if (!_loggedCrosshair && _reticle.IsActive)
-                {
-                    _loggedCrosshair = true;
-                    Logger.LogInfo("Crosshair bound: " + _crosshair.Describe());
-                }
-            }
-            else
-            {
-                _reticle.Clear();
+                _loggedCrosshair = true;
+                Logger.LogInfo("Crosshair bound: " + _crosshair.Describe());
             }
 
-            // Outside the crosshair branch on purpose: the diagnostics line reports
-            // the camera basis, which exists whether or not the crosshair is being
-            // moved, and an axis check must not depend on a UI setting.
             LogAimGeometry(frame);
         }
 
@@ -682,6 +751,7 @@ namespace SuperliminalHeadTracking.Core
             _wasReceiving = isReceiving;
         }
 
+        /// <summary>The master on/off. It changes this session only and never writes the file.</summary>
         private void HandleToggle()
         {
             TrackingEnabled = !TrackingEnabled;
@@ -706,23 +776,38 @@ namespace SuperliminalHeadTracking.Core
             string label = "Tracking: " + _trackingMode.Description();
             _notificationUI.ShowNotification(label, NotificationType.Info, StatusNotificationSeconds);
             Logger.LogInfo(label);
+
+            bool rotation;
+            bool position;
+            TrackingModeChannels.Encode(_trackingMode, out rotation, out position);
+            SaveConfig(c =>
+            {
+                c.RotationEnabled = rotation;
+                c.PositionEnabled = position;
+            });
         }
 
         private void SetTrackingMode(TrackingMode mode)
         {
             _trackingMode = mode;
-            _pipeline.RotationEnabled = mode != TrackingMode.PositionOnly;
-            _pipeline.PositionEnabled = mode != TrackingMode.RotationOnly;
+            bool rotation;
+            bool position;
+            TrackingModeChannels.Encode(mode, out rotation, out position);
+            _pipeline.RotationEnabled = rotation;
+            _pipeline.PositionEnabled = position;
         }
 
         private void HandleToggleYawMode()
         {
-            _rig.WorldSpaceYaw = !_rig.WorldSpaceYaw;
+            bool worldSpaceYaw = !_rig.WorldSpaceYaw;
+            _rig.WorldSpaceYaw = worldSpaceYaw;
             _notificationUI.ShowNotification(
-                _rig.WorldSpaceYaw ? "Yaw: World-locked" : "Yaw: Camera-local",
+                worldSpaceYaw ? "Yaw: World-locked" : "Yaw: Camera-local",
                 NotificationType.Info,
                 StatusNotificationSeconds);
-            Logger.LogInfo("Yaw mode: " + (_rig.WorldSpaceYaw ? "world-locked" : "camera-local"));
+            Logger.LogInfo("Yaw mode: " + (worldSpaceYaw ? "world-locked" : "camera-local"));
+
+            SaveConfig(c => c.WorldSpaceYaw = worldSpaceYaw);
         }
 
         private void OnGameStateChanged(GameState newState)
