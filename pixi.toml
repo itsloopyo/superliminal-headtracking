@@ -23,13 +23,12 @@ uninstall = "scripts\\uninstall.cmd"
 # Produces both release/SuperliminalHeadTracking-v<version>-installer.zip and
 # -nexus.zip. Runs from a clean checkout with no Superliminal install: setup
 # builds every reference from repo files only.
-package = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1", depends-on = ["build"] }
+package = { cmd = "powershell -ExecutionPolicy Bypass -File scripts/package-release.ps1", depends-on = ["test"] }
 clean = "dotnet clean src/SuperliminalHeadTracking/SuperliminalHeadTracking.csproj"
-# No automated test suite. What the mod does is move a camera in a running game,
-# so what stands in for a test run is an in-game verification pass. Declared as a
-# no-op so the task exists and says so, rather than being absent and leaving the
-# reader to guess.
-test = "powershell -Command \"Write-Host 'No automated tests - verification for this mod is an in-game pass'\""
+# The config tests, among them the differential test in tests/config_differential, which holds
+# the legacy import to the v0.2.0 reader it replaces on every published build's first-run file and
+# on core's mutation corpus. What the mod does to the camera is still checked by an in-game pass.
+test = { cmd = "dotnet test tests/SuperliminalHeadTracking.Tests/SuperliminalHeadTracking.Tests.csproj -c Release", depends-on = ["build"] }
 # Preflight diagnostics. Nothing depends on them: they read what is committed
 # (and, for the manifest, the last ZIP `package` wrote) and report.
 validate-manifest = "node cameraunlock-core/scripts/validate-manifest.mjs ."

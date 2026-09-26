@@ -5,19 +5,19 @@ using UnityEngine;
 
 namespace SuperliminalHeadTracking.Core
 {
-    public class InputHandler
+    internal class InputHandler
     {
-        private readonly ConfigManager _config;
+        private readonly ModConfig _config;
 
         public event Action OnTogglePressed;
         public event Action OnCycleTrackingModePressed;
         public event Action OnToggleYawModePressed;
 
-        public KeyCode ToggleKey { get { return _config.ToggleKey.Value; } }
-        public KeyCode CycleTrackingModeKey { get { return _config.CycleTrackingModeKey.Value; } }
-        public KeyCode YawModeKey { get { return _config.YawModeKey.Value; } }
+        public KeyCode ToggleKey { get { return _config.ToggleKey; } }
+        public KeyCode CycleTrackingModeKey { get { return _config.CycleTrackingModeKey; } }
+        public KeyCode YawModeKey { get { return _config.YawModeKey; } }
 
-        public InputHandler(ConfigManager config)
+        public InputHandler(ModConfig config)
         {
             _config = config;
         }
@@ -25,12 +25,12 @@ namespace SuperliminalHeadTracking.Core
         public void CheckInput()
         {
             // Common case: nothing pressed this frame. Skip the GetKeyDown probes and
-            // the ConfigEntry reads behind them.
+            // the config reads behind them.
             if (!Input.anyKeyDown) return;
 
-            Dispatch(_config.ToggleKey.Value, ChordHotkeys.ToggleLetter, OnTogglePressed);
-            Dispatch(_config.CycleTrackingModeKey.Value, ChordHotkeys.PositionLetter, OnCycleTrackingModePressed);
-            Dispatch(_config.YawModeKey.Value, ChordHotkeys.FourthToggleLetter, OnToggleYawModePressed);
+            Dispatch(_config.ToggleKey, ChordHotkeys.ToggleLetter, OnTogglePressed);
+            Dispatch(_config.CycleTrackingModeKey, ChordHotkeys.PositionLetter, OnCycleTrackingModePressed);
+            Dispatch(_config.YawModeKey, ChordHotkeys.FourthToggleLetter, OnToggleYawModePressed);
         }
 
         private static void Dispatch(KeyCode primary, KeyCode chordLetter, Action handler)

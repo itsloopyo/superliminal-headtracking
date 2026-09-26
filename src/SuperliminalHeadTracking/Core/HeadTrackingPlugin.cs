@@ -12,6 +12,7 @@ using SuperliminalHeadTracking.Aim;
 using SuperliminalHeadTracking.CameraRig;
 using SuperliminalHeadTracking.Config;
 using SuperliminalHeadTracking.Game;
+using SuperliminalHeadTracking.Legacy;
 using UnityEngine;
 
 namespace SuperliminalHeadTracking.Core
@@ -54,7 +55,7 @@ namespace SuperliminalHeadTracking.Core
         public static HeadTrackingPlugin Instance { get; private set; }
         public bool TrackingEnabled { get; private set; }
 
-        private ConfigManager _config;
+        private ModConfig _config;
         private OpenTrackReceiver _receiver;
         private ZoomCompensatedSource _trackingSource;
         private TrackingProcessor _processor;
@@ -118,8 +119,11 @@ namespace SuperliminalHeadTracking.Core
             _logError = Logger.LogError;
             Logger.LogInfo(PluginName + " v" + PluginVersion + " initializing...");
 
-            _config = new ConfigManager();
-            _config.Initialize(Config);
+            _config = LegacyConfigMap.ToRuntime(LegacyConfigReader.Read(Config, out _));
+            // The reader writes nothing; this is the write BepInEx's Bind made on every start,
+            // which creates the .cfg on the first one.
+            Config.SaveOnConfigSet = true;
+            Config.Save();
 
             GameReflection.Initialize(_logInfo, _logError);
 
@@ -138,18 +142,18 @@ namespace SuperliminalHeadTracking.Core
             // interval. Announcing the port as listening underneath that contradicts
             // it, and the contradiction is what a user reads when they come to the log
             // asking why there is no tracking.
-            bool listening = _receiver.Start(_config.UDPPort.Value);
-            TrackingEnabled = _config.EnabledOnStartup.Value;
+            bool listening = _receiver.Start(_config.UdpPort);
+            TrackingEnabled = _config.EnabledOnStartup;
             _initialized = true;
 
             Logger.LogInfo(PluginName + " initialized. Tracking "
                            + (TrackingEnabled ? "enabled" : "disabled"));
             if (listening)
             {
-                Logger.LogInfo("Listening on UDP port " + _config.UDPPort.Value);
+                Logger.LogInfo("Listening on UDP port " + _config.UdpPort);
             }
 
-            if (_config.ShowStartupNotification.Value)
+            if (_config.ShowStartupNotification)
             {
                 string status = TrackingEnabled ? "Head Tracking: ON" : "Head Tracking: OFF";
                 _notificationUI.ShowNotification(status + "\n" + BuildHotkeyInfo(),
@@ -165,8 +169,8 @@ namespace SuperliminalHeadTracking.Core
 
             _processor = new TrackingProcessor
             {
-                LocalSmoothing = _config.LocalSmoothing.Value,
-                RemoteSmoothing = _config.RemoteSmoothing.Value,
+                LocalSmoothing = _config.LocalSmoothing,
+                RemoteSmoothing = _config.RemoteSmoothing,
                 // Pitch alone is turned over. The composition is the transform-space
                 // twin of core's ViewMatrixModifier.ApplyHeadRotationDecomposed -
                 // world yaw about Vector3.up, then Quaternion.Euler(pitch, 0, roll)
@@ -178,9 +182,9 @@ namespace SuperliminalHeadTracking.Core
                 // Negating them was tried in game and turned the view the wrong way on
                 // both axes.
                 Sensitivity = new SensitivitySettings(
-                    _config.YawSensitivity.Value,
-                    _config.PitchSensitivity.Value,
-                    _config.RollSensitivity.Value,
+                    _config.YawSensitivity,
+                    _config.PitchSensitivity,
+                    _config.RollSensitivity,
                     invertYaw: false,
                     invertPitch: true,
                     invertRoll: false),
@@ -194,28 +198,28 @@ namespace SuperliminalHeadTracking.Core
             // instead would land ahead of that clamp and hand the forward lean the
             // 0.10m backward budget.
             PositionSettings positionSettings = PositionSettings.Symmetric(
-                _config.PositionSensitivityX.Value,
-                _config.PositionSensitivityY.Value,
-                _config.PositionSensitivityZ.Value,
-                _config.PositionLimitX.Value,
-                _config.PositionLimitY.Value,
-                _config.PositionLimitZ.Value,
-                _config.PositionLimitZBack.Value,
-                _config.LocalSmoothing.Value,
-                _config.RemoteSmoothing.Value,
+                _config.PositionSensitivityX,
+                _config.PositionSensitivityY,
+                _config.PositionSensitivityZ,
+                _config.PositionLimitX,
+                _config.PositionLimitY,
+                _config.PositionLimitZ,
+                _config.PositionLimitZBack,
+                _config.LocalSmoothing,
+                _config.RemoteSmoothing,
                 invertX: false, invertY: false, invertZ: false);
 
             _positionProcessor = new PositionProcessor
             {
                 Settings = positionSettings,
-                TrackerPivotForward = _config.TrackerPivotForward.Value
+                TrackerPivotForward = _config.TrackerPivotForward
             };
             _positionInterpolator = new PositionInterpolator();
 
             _pipeline = new TrackingPipeline(_trackingSource, _processor, _interpolator,
                 _positionProcessor, _positionInterpolator);
 
-            SetTrackingMode(_config.PositionEnabled.Value
+            SetTrackingMode(_config.PositionEnabled
                 ? TrackingMode.RotationAndPosition
                 : TrackingMode.RotationOnly);
         }
@@ -223,7 +227,7 @@ namespace SuperliminalHeadTracking.Core
         private void BuildRig()
         {
             _rig = new CameraRig.CameraRig(() => GameReflection.PlayerCamera);
-            _rig.WorldSpaceYaw = _config.WorldSpaceYaw.Value;
+            _rig.WorldSpaceYaw = _config.WorldSpaceYaw;
             _rig.Applied += OnCameraApplied;
             _rig.Enable();
         }
@@ -235,8 +239,8 @@ namespace SuperliminalHeadTracking.Core
             _reticle = new ReticleController(_crosshair, _aimTrace, _logError);
             _leanClamp = new LeanClamp(0)
             {
-                Margin = _config.CollisionMargin.Value,
-                ReleaseSmoothing = _config.CollisionReleaseSmoothing.Value
+                Margin = _config.CollisionMargin,
+                ReleaseSmoothing = _config.CollisionReleaseSmoothing
             };
         }
 
@@ -443,7 +447,7 @@ namespace SuperliminalHeadTracking.Core
         private void ApplyLeanClamp(bool shouldTrack)
         {
             bool active = shouldTrack
-                          && _config.CollisionEnabled.Value
+                          && _config.CollisionEnabled
                           && _leanClamp.HasMask
                           && _pipeline.PositionEnabled;
 
@@ -514,9 +518,9 @@ namespace SuperliminalHeadTracking.Core
         /// </summary>
         private void OnCameraApplied(AppliedFrame frame)
         {
-            _reticle.MeasureEngineDelta = _config.LogAimGeometry.Value;
+            _reticle.MeasureEngineDelta = _config.LogAimGeometry;
 
-            if (_config.MoveCrosshair.Value)
+            if (_config.MoveCrosshair)
             {
                 _reticle.OnApplied(frame);
 
@@ -595,7 +599,7 @@ namespace SuperliminalHeadTracking.Core
         /// </summary>
         private void LogAimGeometry(AppliedFrame frame)
         {
-            if (!_config.LogAimGeometry.Value) return;
+            if (!_config.LogAimGeometry) return;
             if (Time.realtimeSinceStartup < _nextAimGeometryLogTime) return;
             _nextAimGeometryLogTime = Time.realtimeSinceStartup + AimGeometryLogInterval;
 
@@ -670,7 +674,7 @@ namespace SuperliminalHeadTracking.Core
                 ? "OpenTrack connection established"
                 : "OpenTrack connection lost");
 
-            if (_config.ShowConnectionNotifications.Value)
+            if (_config.ShowConnectionNotifications)
             {
                 if (isReceiving) _notificationUI.ShowConnectionEstablished();
                 else _notificationUI.ShowConnectionLost();

@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- net48, beside the Steam build's net472: BepInEx 5's ConfigFile loads here as it does in game. -->
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>SuperliminalHeadTracking.Tests</AssemblyName>
+    <RootNamespace>SuperliminalHeadTracking.Tests</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\cameraunlock-core\csharp\src\CameraUnlock.Core\CameraUnlock.Core.csproj" />
+  </ItemGroup>
+
+  <!-- The vendored BepInEx and the Unity stubs that `pixi run setup` stages for the mod.
+       The legacy import runs BepInEx's own ConfigFile, so the test runs the real one. -->
+  <ItemGroup>
+    <Reference Include="BepInEx">
+      <HintPath>..\..\src\SuperliminalHeadTracking\libs\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\src\SuperliminalHeadTracking\libs\UnityEngine.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <!-- The mod's Unity-free config sources, compiled in rather than referenced: a reference
+       to the mod would pull CameraUnlock.Core.Unity into the test host. -->
+  <ItemGroup>
+    <Compile Include="..\..\src\SuperliminalHeadTracking\Legacy\*.cs" Link="Legacy\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\SuperliminalHeadTracking\Config\*.cs" Link="Config\%(Filename)%(Extension)" />
+    <Compile Include="..\config_differential\**\*.cs" Link="config_differential\%(RecursiveDir)%(Filename)%(Extension)" />
+    <Compile Include="..\..\cameraunlock-core\csharp\testing\IniMutations.cs" Link="IniMutations.cs" />
+  </ItemGroup>
+</Project>

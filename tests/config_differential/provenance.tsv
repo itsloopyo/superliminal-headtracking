@@ -1,0 +1,38 @@
+# What the differential test compares, and where each file came from.
+# Columns: role, source (tag:path, a release asset, or the path in this repo), sha256 of the bytes.
+# v0.2.0 is the newest published build. v0.1.0 is the only other; there is no dev pre-release and no
+# predecessor repo. Config/ConfigManager.cs, the reader both read the .cfg with, is the same file at
+# v0.1.0, v0.2.0 and 44d524e, the commit the reader in src/SuperliminalHeadTracking/Legacy was
+# frozen from, restructured to fill LegacyConfig and write nothing. It names two core values instead
+# of literals: SmoothingUtils.DefaultLocalSmoothing/DefaultRemoteSmoothing and
+# PositionSettings.Default's limits. The oracle compiles against this repo's core pin, and
+# ComparisonOneTests.TheOraclesCoreValuesAreTheOnesV020WasBuiltWith holds those to the values core
+# 1178230 (v0.2.0's pin) and 2742a84 (v0.1.0's) held. The frozen reader writes them as literals, so
+# comparison 1 is not empty by construction and runs on every input.
+published reader	v0.2.0:src/SuperliminalHeadTracking/Config/ConfigManager.cs	9a74a31ccbc8c9395183f0bec6629c802e4a054c47d1a42cc18ad41d16798968
+published reader	v0.1.0:src/SuperliminalHeadTracking/Config/ConfigManager.cs	9a74a31ccbc8c9395183f0bec6629c802e4a054c47d1a42cc18ad41d16798968
+oracle copy	tests/config_differential/oracle/ConfigManager.cs	9a74a31ccbc8c9395183f0bec6629c802e4a054c47d1a42cc18ad41d16798968
+frozen from	44d524e:src/SuperliminalHeadTracking/Config/ConfigManager.cs	9a74a31ccbc8c9395183f0bec6629c802e4a054c47d1a42cc18ad41d16798968
+frozen reader	src/SuperliminalHeadTracking/Legacy/LegacyConfig.cs	d3dc38a8c8c4003bef1143576e22983a7edfdc82576a0fa1171a88795ef5f47e
+frozen reader	src/SuperliminalHeadTracking/Legacy/LegacyConfigReader.cs	57f267296f323213bc1bf48ac7f7c5983b7fac2c7202f923aa96cde892b31290
+frozen reader	src/SuperliminalHeadTracking/Legacy/LegacyConfigKeys.cs	a27274cb23da94a7a5381538b523875c5b830c2b0c3272d105918166befe3122
+BepInEx	vendor/bepinex/BepInEx_win_x64.zip (BepInEx 5.4.23.5), whose BepInEx.dll the test and the Steam first-run harness run	82f9878551030f54657792c0740d9d51a09500eeae1fba21106b0c441e6732c4
+BepInEx 6	vendor/bepinex-il2cpp/BepInEx_UnityIL2CPP_x64.zip (BepInEx 6.0.0-be.785), whose BepInEx.Core.dll the Xbox Game Pass first-run harness ran	2a7cbf74d26abe4765c3e662db1721b923bac39849ebfef2ca5dc7de7e2d9b7f
+# No published build shipped the plugin .cfg, in a ZIP or as a launcher-manifest.json seed (every
+# seed is BepInEx/config/BepInEx.cfg), so the inputs are what each build writes at its first start.
+# A first-run file is the .cfg that build's own SuperliminalHeadTracking.dll, taken from its release
+# installer ZIP (each ZIP's SHA-256 checked against the digest GitHub reports for the asset), writes
+# when its ConfigManager.Initialize runs on a ConfigFile at a path with no file and the plugin's
+# BepInPlugin metadata, as the loader builds it. The Steam DLLs ran under the BepInEx 5 above with the
+# Unity stubs of pixi run setup; v0.2.0's Xbox Game Pass DLL ran on .NET 6 under BepInEx 6's
+# BepInEx.Core.dll with UnityEngine.CoreModule from the UnityEngine.Modules 2020.3.35 package it was
+# built against. The "Acceptable values" comment lines list whichever KeyCode each harness loaded;
+# no reader reads a comment line, and they are the only lines where v0.2.0.cfg and
+# v0.2.0-il2cpp.cfg differ. The test reads every input with BepInEx 5; the Game Pass build reads the
+# .cfg with BepInEx 6 in game, through the same frozen reader compiled against it.
+input source	release v0.1.0 SuperliminalHeadTracking-v0.1.0-installer.zip plugins/SuperliminalHeadTracking.dll ef870340f988055dff50b1710d4ca3a30192f89d2aa691622c7cfe079272e450	-
+input	tests/config_differential/data/first-run/v0.1.0.cfg	6979d62a3fdabb872bd0407c07d0524798c610290106be303dc4c9da73fd427f
+input source	release v0.2.0 SuperliminalHeadTracking-v0.2.0-installer.zip plugins/SuperliminalHeadTracking.dll 718f313dbce29129c3d70ff36f740f5977d8e87f75395522e8421ef74096bc96	-
+input	tests/config_differential/data/first-run/v0.2.0.cfg	213889b3927699364f46b56ea39c443abfb27ac7d08c54ac172ce4e384364770
+input source	release v0.2.0 SuperliminalHeadTracking-v0.2.0-installer.zip plugins-il2cpp/SuperliminalHeadTracking.dll 1da50ed5ded4ab935a1ae65ea7aeea1a912e9de193c8dd9de562eb112c2b18df	-
+input	tests/config_differential/data/first-run/v0.2.0-il2cpp.cfg	819a4c0cd827c00344db5fa1e05b3a71cd2702699d82de0cd3ea16d85e29e925
