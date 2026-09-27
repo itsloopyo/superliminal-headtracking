@@ -170,7 +170,6 @@ namespace SuperliminalHeadTracking.Tests.Differential
             line("PositionLimitYDown", LegacyStartup.Text(c.Position.LimitYDown));
             line("PositionLimitZ", LegacyStartup.Text(c.Position.LimitZ));
             line("PositionLimitZBack", LegacyStartup.Text(c.Position.LimitZBack));
-            line("TrackerPivotForward", LegacyStartup.Text(c.TrackerPivotForward));
             line("CollisionEnabled", LegacyStartup.Text(c.CollisionEnabled));
             line("CollisionMargin", LegacyStartup.Text(c.CollisionMargin));
             line("CollisionReleaseSmoothing", LegacyStartup.Text(c.CollisionReleaseSmoothing));
@@ -186,8 +185,9 @@ namespace SuperliminalHeadTracking.Tests.Differential
 
     /// <summary>
     /// What the converted plugin sets up from its settings, in the same terms as
-    /// <see cref="LegacyStartup"/>: every sensitivity is the shipped identity, in code now, and the
-    /// game's crosshair always follows the aim.
+    /// <see cref="LegacyStartup"/>: every sensitivity is the shipped identity, in code now, the
+    /// neck pivot is the shipped 0, PositionProcessor's own, and the game's crosshair always follows
+    /// the aim.
     /// </summary>
     internal static class ConvertedStartup
     {
@@ -210,7 +210,7 @@ namespace SuperliminalHeadTracking.Tests.Differential
             s["PositionLimits"] = LegacyStartup.Text(c.Position.LimitX) + " " + LegacyStartup.Text(c.Position.LimitY) + " "
                                   + LegacyStartup.Text(c.Position.LimitYDown) + " " + LegacyStartup.Text(c.Position.LimitZ) + " "
                                   + LegacyStartup.Text(c.Position.LimitZBack);
-            s["TrackerPivotForward"] = LegacyStartup.Text(c.TrackerPivotForward);
+            s["TrackerPivotForward"] = LegacyStartup.Text(0.0f);
             s["CollisionEnabled"] = LegacyStartup.Text(c.CollisionEnabled);
             s["CollisionMargin"] = LegacyStartup.Text(c.CollisionMargin);
             s["CollisionReleaseSmoothing"] = LegacyStartup.Text(c.CollisionReleaseSmoothing);

@@ -40,7 +40,6 @@ namespace SuperliminalHeadTracking.Config
                     ConfigConcepts.CollisionEnabled,
                     ConfigConcepts.CollisionMargin,
                     ConfigConcepts.CollisionReleaseSmoothing,
-                    ConfigConcepts.TrackerPivotForward,
                     ConfigConcepts.ToggleKey,
                     ConfigConcepts.CycleTrackingModeKey,
                     ConfigConcepts.YawModeKey)
@@ -50,9 +49,6 @@ namespace SuperliminalHeadTracking.Config
                 .Select(ConfigConcepts.CollisionMargin)
                 .Comment("How far, in metres, the view is held off a wall when you lean into it.\n" +
                          "The mod holds it at least 1.5 times the camera's near clip distance.")
-                .Select(ConfigConcepts.TrackerPivotForward)
-                .Comment("Metres from the pivot of your neck forward to the point the tracker follows.\n" +
-                         "Used to remove the lean that turning your head adds. 0 turns it off.")
                 .Local("Notifications", "ShowStartupNotification", c => c.ShowStartupNotification,
                     (c, v) => c.ShowStartupNotification = v, new BoolCodec(),
                     "true: show whether head tracking is on, and its hotkeys, when the game starts.")

@@ -87,7 +87,6 @@ namespace SuperliminalHeadTracking.Tests
             Assert.Equal(0.20f, config.Position.LimitYDown);
             Assert.Equal(0.40f, config.Position.LimitZ);
             Assert.Equal(0.10f, config.Position.LimitZBack);
-            Assert.Equal(0.0f, config.TrackerPivotForward);
             Assert.True(config.CollisionEnabled);
             Assert.Equal(0.12f, config.CollisionMargin);
             Assert.Equal(0.9f, config.CollisionReleaseSmoothing);

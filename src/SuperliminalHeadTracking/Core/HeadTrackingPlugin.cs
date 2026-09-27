@@ -294,8 +294,7 @@ namespace SuperliminalHeadTracking.Core
 
             _positionProcessor = new PositionProcessor
             {
-                Settings = positionSettings,
-                TrackerPivotForward = _config.TrackerPivotForward
+                Settings = positionSettings
             };
             _positionInterpolator = new PositionInterpolator();
 
