@@ -4,18 +4,11 @@
 
 An unofficial head tracking mod for Superliminal that moves the view with your head while your mouse or controller keeps aiming, driven by a webcam, phone, or any OpenTrack compatible tracker, with no VR headset required.
 
-> **Settings have moved.** This version keeps its settings in `BepInEx\config\CameraUnlock.ini`.
-> The first time it starts it reads your settings from the old
-> `BepInEx\config\com.cameraunlock.superliminal.headtracking.cfg` into the new file, and leaves the
-> old file as it was. BepInEx's ConfigurationManager no longer lists the settings: edit
-> `CameraUnlock.ini` with any text editor. [Configuration](#configuration) has the details.
-
 ## Features
 
 - **Decoupled look and aim** - your head moves the view, your mouse or controller still points the grab ray
 - **6DOF positional tracking** - lean, peek and duck with head position
 - **Works with any OpenTrack compatible tracker** - free options available for PC, iOS and Android
-- **Resizing stays true to the mouse** - an object grows to the same size whether your head is turned or still
 
 ## Requirements
 
@@ -268,7 +261,7 @@ LogAimGeometry=false
 
 **Config changes do not apply:**
 
-- Close the game, edit `BepInEx\config\CameraUnlock.ini`, then relaunch. Editing the old `.cfg` changes nothing once `CameraUnlock.ini` exists.
+- Close the game, edit `BepInEx\config\CameraUnlock.ini`, then relaunch.
 - Make sure nothing follows the value on the line: text after a value is part of the value. `BepInEx/LogOutput.log` names each line the mod could not read and the value it used instead.
 
 **Wrong rotation axis, or yaw feels wrong looking up and down:**
@@ -286,7 +279,7 @@ Download the new release and run `install.cmd` again. Your `CameraUnlock.ini` is
 
 ## Uninstalling
 
-Run `uninstall.cmd`. This removes the mod DLLs and leaves `CameraUnlock.ini` and the old `.cfg` in place. BepInEx is only removed if the installer put it there. Use `uninstall.cmd /force` to remove it anyway.
+Run `uninstall.cmd`. This removes the mod DLLs and leaves your settings in place. BepInEx is only removed if the installer put it there. Use `uninstall.cmd /force` to remove it anyway.
 
 ## Building from Source
 
