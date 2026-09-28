@@ -40,57 +40,6 @@ $installCmdPath = Join-Path $projectDir "scripts\install.cmd"
 
 Import-Module (Join-Path $projectDir "cameraunlock-core\powershell\ReleaseWorkflow.psm1") -Force
 
-# Mirrors New-ChangelogFromCommits' insertion so a -Force maintenance entry
-# lands in the same place with the same shape.
-function Add-ChangelogEntry {
-    param([string]$Path, [string]$Entry)
-    $changelog = Get-Content $Path -Raw
-    if ($changelog -match '(?s)(# Changelog.*?)(## \[)') {
-        $changelog = $changelog -replace '(?s)(# Changelog.*?\n\n)', "`$1$Entry"
-    } else {
-        # No version heading yet, so anchor on the H1's own line rather than on
-        # the first newline anywhere after it - the lazy form matched inside the
-        # H1 and left the entry glued to the title with the file's prose below it.
-        $changelog = $changelog -replace '(?s)(# Changelog[^\n]*\n)', "`$1`n$Entry"
-    }
-    $changelog = $changelog.TrimEnd() + "`n"
-    Set-Content $Path $changelog -NoNewline
-}
-
-function Add-MaintenanceChangelogEntry {
-    param([string]$Path, [string]$NewVersion)
-    $date = Get-Date -Format 'yyyy-MM-dd'
-    Add-ChangelogEntry -Path $Path -Entry "## [$NewVersion] - $date`n`n### Changed`n`n- Maintenance release (no user-facing changes).`n`n"
-}
-
-# A first release has no tags to generate from, and the CHANGELOG is normally
-# already carrying the authored entry under the version the repo has been sitting
-# at (0.0.0 for a new mod). Bumping to 0.0.1 must therefore RETITLE that entry
-# rather than file a "First release." placeholder above it, which would ship a ZIP
-# whose CHANGELOG leads with a stub while the real feature list sits under a
-# version that was never released.
-function Set-FirstReleaseChangelogEntry {
-    param([string]$Path, [string]$NewVersion)
-    $date = Get-Date -Format 'yyyy-MM-dd'
-    $changelog = Get-Content $Path -Raw
-
-    if ($changelog -match [regex]::Escape("## [$NewVersion]")) {
-        Write-Host "  First release - CHANGELOG already has a [$NewVersion] entry, leaving it" -ForegroundColor Gray
-        return
-    }
-
-    $heading = New-Object regex '(?m)^## \[[^\]]+\].*$'
-    if ($heading.IsMatch($changelog)) {
-        $changelog = $heading.Replace($changelog, "## [$NewVersion] - $date", 1)
-        Set-Content $Path ($changelog.TrimEnd() + "`n") -NoNewline
-        Write-Host "  First release - retitled the existing CHANGELOG entry to [$NewVersion]" -ForegroundColor Gray
-        return
-    }
-
-    Add-ChangelogEntry -Path $Path -Entry "## [$NewVersion] - $date`n`nFirst release.`n`n"
-    Write-Host "  First release - inserted a [$NewVersion] CHANGELOG entry" -ForegroundColor Gray
-}
-
 Write-Host "=== Superliminal Head Tracking Release ===" -ForegroundColor Cyan
 Write-Host ""
 
@@ -177,30 +126,23 @@ Write-Host ""
 # mutating any version file - a failure here then leaves a clean tree instead of
 # stranding a half-applied bump with no tag.
 Write-Host "Generating CHANGELOG from commits..." -ForegroundColor Cyan
-if (-not (git tag -l)) {
-    # Never written over the top: the authored entry is the only description of the
-    # release that exists, and it ships inside the ZIP as well as sitting in the repo.
-    Set-FirstReleaseChangelogEntry -Path $changelogPath -NewVersion $Version
-} else {
-    try {
-        New-ChangelogFromCommits `
-            -ChangelogPath $changelogPath `
-            -Version $Version `
-            -ArtifactPaths @(
-                "src/SuperliminalHeadTracking/",
-                "cameraunlock-core",
-                "scripts/install.cmd",
-                "scripts/uninstall.cmd"
-            )
-    } catch {
-        if (-not $Force) {
-            Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
-            Write-Host "No user-facing changes to release. Re-run with -Force for a maintenance release." -ForegroundColor Yellow
-            exit 1
-        }
-        Write-Host "No user-facing commits since last tag - writing maintenance entry (-Force)." -ForegroundColor Yellow
-        Add-MaintenanceChangelogEntry -Path $changelogPath -NewVersion $Version
+try {
+    New-ChangelogFromCommits `
+        -ChangelogPath $changelogPath `
+        -Version $Version `
+        -ArtifactPaths @(
+            "src/SuperliminalHeadTracking/",
+            "cameraunlock-core",
+            "scripts/install.cmd",
+            "scripts/uninstall.cmd"
+        ) `
+        -Maintenance:$Force
+} catch {
+    Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
+    if (-not $Force) {
+        Write-Host "No user-facing changes to release. Re-run with -Force for a maintenance release." -ForegroundColor Yellow
     }
+    exit 1
 }
 
 # Step 2: bump the version everywhere it is recorded. The csproj is canonical;
