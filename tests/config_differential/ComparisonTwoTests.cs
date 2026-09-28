@@ -32,22 +32,6 @@ namespace SuperliminalHeadTracking.Tests.Differential
             "PositionLimitZ=0.36\r\nPositionLimitZBack=0.06\r\nCollisionEnabled=false\r\nCollisionReleaseSmoothing=0.5\r\n\r\n" +
             "[Hotkeys]\r\nToggleKey=F8\r\nCycleTrackingModeKey=F7\r\nYawModeKey=F6\r\n";
 
-        // A v0.2.0 .cfg can hold a number for a key, which BepInEx's enum parse accepts and Unity
-        // names no key for. No hotkey list can hold it and no approved rule drops it, so the config
-        // owner defers these imports: the player keeps what v0.2.0 ran on, nothing is written, and
-        // the import runs again at the next start.
-        // These are unresolved, not accepted: core's config-format.json has no rule for them yet
-        // (N1 covers native virtual-key codes only). Once it records one, the map applies it and
-        // this list is deleted. An input outside it that the codecs cannot hold still fails here.
-        private static readonly string[] DeferredValues = { "value 010", "value -1", "value +1", "value space then 1", "value 1 then space", "value 2" };
-
-        private static IEnumerable<string> Deferred()
-        {
-            return new[] { "[Keybindings] ToggleKey", "[Keybindings] CycleTrackingModeKey", "[Keybindings] YawModeKey" }
-                .SelectMany(key => DeferredValues.Select(v => "corpus " + key + ": " + v))
-                .OrderBy(n => n, StringComparer.Ordinal);
-        }
-
         private static readonly Lazy<string> MigratedDir = new Lazy<string>(() =>
         {
             string dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "migrated");
@@ -72,7 +56,6 @@ namespace SuperliminalHeadTracking.Tests.Differential
         {
             List<DifferentialInput> inputs = Inputs.All().ToList();
             var failures = new ConcurrentBag<string>();
-            var deferred = new ConcurrentBag<string>();
             var refused = new ConcurrentBag<string>();
             var created = new ConcurrentDictionary<string, byte[]>(StringComparer.Ordinal);
             byte[] committed = File.ReadAllBytes(ConfigTests.Committed());
@@ -105,25 +88,17 @@ namespace SuperliminalHeadTracking.Tests.Differential
                         continue;
                     }
 
-                    if (migration.Status == ConfigLoadStatus.Deferred)
-                    {
-                        if (!readOnly) deferred.Add(input.Name);
-                        if (!migration.Reason.Contains("cannot be converted")) failures.Add(name + ": deferred: " + migration.Reason);
-                    }
-                    else if (migration.Status != ConfigLoadStatus.Migrated)
+                    if (migration.Status != ConfigLoadStatus.Migrated)
                     {
                         failures.Add(name + ": " + migration.Status + ": " + migration.Reason);
                         continue;
                     }
-                    else
+                    created[Sha256(migration.Created)] = migration.Created;
+                    string text = Encoding.ASCII.GetString(migration.Created);
+                    foreach (ConceptDescriptor concept in import.Result.FollowsDefaultsIni)
                     {
-                        created[Sha256(migration.Created)] = migration.Created;
-                        string text = Encoding.ASCII.GetString(migration.Created);
-                        foreach (ConceptDescriptor concept in import.Result.FollowsDefaultsIni)
-                        {
-                            if (!text.Contains("\r\n" + concept.Key + "=default\r\n"))
-                                failures.Add(name + ": " + concept.Key + " follows Defaults.ini and is not written default");
-                        }
+                        if (!text.Contains("\r\n" + concept.Key + "=default\r\n"))
+                            failures.Add(name + ": " + concept.Key + " follows Defaults.ini and is not written default");
                     }
                     if (imported != migrated) failures.Add(name + ":\n" + Diff(imported, migrated));
                 }
@@ -136,7 +111,6 @@ namespace SuperliminalHeadTracking.Tests.Differential
                 File.WriteAllBytes(Path.Combine(MigratedDir.Value, file.Key + ".ini"), file.Value);
             }
             Assert.Equal(ComparisonOneTests.RefusedByBepInEx(), refused.OrderBy(n => n, StringComparer.Ordinal));
-            Assert.Equal(Deferred(), deferred.OrderBy(n => n, StringComparer.Ordinal));
         }
 
         /// <summary>
@@ -175,7 +149,7 @@ namespace SuperliminalHeadTracking.Tests.Differential
                     if (key == "PositionSensitivity" && positionDropped) continue;
                     if (key == "CrosshairFollowsAim" && crosshairDropped) continue;
                     if (key == "TrackerPivotForward" && pivotDropped) continue;
-                    if (result.Dropped.Any(d => d.Rule == DropRule.ModifierKey && d.Key == key))
+                    if (result.Dropped.Any(d => (d.Rule == DropRule.ModifierKey || d.Rule == DropRule.KeyCodeOutOfRange) && d.Key == key))
                     {
                         string chord = key == "ToggleKey" ? "Ctrl+Shift+Y" : key == "CycleTrackingModeKey" ? "Ctrl+Shift+G" : "Ctrl+Shift+H";
                         if (after[key] != chord) failures.Add(input.Name + ": " + key + " " + before[key] + " -> " + after[key]);
@@ -192,9 +166,15 @@ namespace SuperliminalHeadTracking.Tests.Differential
                     expectedShaping.Add(section + " " + key + " " + Codec(value) + " " + Codec(shipped) + " " + folded);
                     if (!folded) expectedDrops.Add("PoseShaping " + section + " " + key + " " + Codec(value));
                 };
-                if (IsModifier(old.ToggleKey)) expectedDrops.Add("ModifierKey Keybindings ToggleKey " + old.ToggleKey);
-                if (IsModifier(old.CycleTrackingModeKey)) expectedDrops.Add("ModifierKey Keybindings CycleTrackingModeKey " + old.CycleTrackingModeKey);
-                if (IsModifier(old.YawModeKey)) expectedDrops.Add("ModifierKey Keybindings YawModeKey " + old.YawModeKey);
+                Action<string, UnityEngine.KeyCode> hotkey = (key, code) =>
+                {
+                    if (IsModifier(code)) expectedDrops.Add("ModifierKey Keybindings " + key + " " + code);
+                    else if (code != UnityEngine.KeyCode.None && !KeyBindings.HasName((int)code))
+                        expectedDrops.Add("KeyCodeOutOfRange Keybindings " + key + " " + ((int)code).ToString(System.Globalization.CultureInfo.InvariantCulture));
+                };
+                hotkey("ToggleKey", old.ToggleKey);
+                hotkey("CycleTrackingModeKey", old.CycleTrackingModeKey);
+                hotkey("YawModeKey", old.YawModeKey);
                 if (!old.MoveCrosshair) expectedDrops.Add("Reticle UI MoveCrosshair false");
                 shaping("Sensitivity", "YawSensitivity", old.YawSensitivity, 1.0f);
                 shaping("Sensitivity", "PitchSensitivity", old.PitchSensitivity, 1.0f);
@@ -309,6 +289,42 @@ namespace SuperliminalHeadTracking.Tests.Differential
             }
             Assert.Equal("Ctrl+Shift+G", LegacyConfigImport.HotkeyList(UnityEngine.KeyCode.None, UnityEngine.KeyCode.G,
                 "CycleTrackingModeKey", new List<DroppedValue>()));
+        }
+
+        /// <summary>
+        /// Normalisation N1: a key code Unity names no key for, which a .cfg can hold as a number,
+        /// is left unbound, the drop is logged, and the action keeps its Ctrl+Shift chord. A Ctrl,
+        /// Shift or Alt key alone (N3) in the same file is unbound beside it, and the file migrates.
+        /// </summary>
+        [Fact]
+        public void AKeyCodeUnityNamesNoKeyForImportsAsUnboundAndKeepsTheChord()
+        {
+            foreach (int code in new[] { -1, 1, 2, 10, 999 })
+            {
+                Assert.False(KeyBindings.HasName(code), code + " names a key");
+                var dropped = new List<DroppedValue>();
+                Assert.Equal("Ctrl+Shift+H", LegacyConfigImport.HotkeyList((UnityEngine.KeyCode)code, UnityEngine.KeyCode.H, "YawModeKey", dropped));
+                DroppedValue drop = Assert.Single(dropped);
+                Assert.Equal(DropRule.KeyCodeOutOfRange, drop.Rule);
+                Assert.Equal("Keybindings YawModeKey " + code.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    drop.Section + " " + drop.Key + " " + drop.Value);
+            }
+
+            DifferentialInput first = Inputs.FirstRuns().Last();
+            string cfg = Encoding.ASCII.GetString(first.Bytes)
+                .Replace("\nToggleKey = End\r\n", "\nToggleKey = 999\r\n")
+                .Replace("\nCycleTrackingModeKey = PageUp\r\n", "\nCycleTrackingModeKey = LeftShift\r\n");
+            Assert.Contains("\nToggleKey = 999\r\n", cfg);
+            Assert.Contains("\nCycleTrackingModeKey = LeftShift\r\n", cfg);
+            MigrationOutcome migration = MigrationOutcome.Run(new DifferentialInput("ToggleKey 999", Encoding.ASCII.GetBytes(cfg)), null, false);
+            Assert.Equal(ConfigLoadStatus.Migrated, migration.Status);
+            Assert.Equal("Ctrl+Shift+Y", migration.Config.ToggleKeyName);
+            Assert.Equal("Ctrl+Shift+G", migration.Config.CycleTrackingModeKeyName);
+            string created = Encoding.ASCII.GetString(migration.Created);
+            Assert.Contains("\r\nToggleKey=Ctrl+Shift+Y\r\n", created);
+            Assert.Contains("\r\nCycleTrackingModeKey=Ctrl+Shift+G\r\n", created);
+            Assert.Contains(migration.Log, l => l.Contains("ToggleKey=999, it is not a key code Unity names"));
+            Assert.Contains(migration.Log, l => l.Contains("CycleTrackingModeKey=LeftShift, it is a Ctrl, Shift or Alt key"));
         }
 
         private static bool IsModifier(UnityEngine.KeyCode code)

@@ -12,6 +12,7 @@
   - Reticle settings, and a key that toggled the reticle.
   - A neck pivot distance you changed from its default. The neck pivot is not a setting now.
   - A hotkey set to Ctrl, Shift or Alt on its own. That key goes down before the key of any chord made with it, so the hotkey is left unbound, and it keeps its Ctrl+Shift chord where it has one.
+  - A hotkey set to a number that is not a key code Unity names (for example `ToggleKey = 999`). The hotkey is left unbound, the log says so, and it keeps its Ctrl+Shift chord.
 - An older version of the mod reads `com.cameraunlock.superliminal.headtracking.cfg` and never reads `CameraUnlock.ini`, so a setting you change after updating is not in `com.cameraunlock.superliminal.headtracking.cfg`.
 - Deleting only `CameraUnlock.ini` makes the next start read `com.cameraunlock.superliminal.headtracking.cfg` again. To go back to the defaults, replace everything in `CameraUnlock.ini` with the defaults the README shows. Every setting they set to `default` then follows `Defaults.ini`.
 - BepInEx's ConfigurationManager no longer lists these settings. Edit `BepInEx\config\CameraUnlock.ini` with any text editor.

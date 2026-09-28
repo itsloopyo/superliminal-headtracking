@@ -334,7 +334,7 @@ namespace SuperliminalHeadTracking.Core
 
         private void BuildInput()
         {
-            _inputHandler = new InputHandler(_config, Logger.LogWarning);
+            _inputHandler = new InputHandler(_config);
             _inputHandler.OnTogglePressed += HandleToggle;
             _inputHandler.OnCycleTrackingModePressed += HandleCycleTrackingMode;
             _inputHandler.OnToggleYawModePressed += HandleToggleYawMode;

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using CameraUnlock.Core.Input;
 using CameraUnlock.Core.Unity.Extensions;
 using SuperliminalHeadTracking.Config;
@@ -21,11 +20,11 @@ namespace SuperliminalHeadTracking.Core
         public event Action OnCycleTrackingModePressed;
         public event Action OnToggleYawModePressed;
 
-        public InputHandler(SuperliminalConfig config, Action<string> logWarning)
+        public InputHandler(SuperliminalConfig config)
         {
-            _toggle = Parse("ToggleKey", config.ToggleKeyName, logWarning);
-            _cycleTrackingMode = Parse("CycleTrackingModeKey", config.CycleTrackingModeKeyName, logWarning);
-            _yawMode = Parse("YawModeKey", config.YawModeKeyName, logWarning);
+            _toggle = Parse("ToggleKey", config.ToggleKeyName);
+            _cycleTrackingMode = Parse("CycleTrackingModeKey", config.CycleTrackingModeKeyName);
+            _yawMode = Parse("YawModeKey", config.YawModeKeyName);
         }
 
         public void CheckInput()
@@ -39,23 +38,15 @@ namespace SuperliminalHeadTracking.Core
             if (KeyBindingInput.IsTriggered(_yawMode) && OnToggleYawModePressed != null) OnToggleYawModePressed();
         }
 
-        // The table's hotkey codec has read every list the file holds, so a list that does not
-        // parse reaches here only from a legacy import the owner deferred: a .cfg key code Unity
-        // names no key for, which the import writes as the number. The items that parse, the
-        // chord among them, are bound and the rest are named in the log.
-        private static KeyBinding[] Parse(string key, string text, Action<string> logWarning)
+        // The table's hotkey codec has read every list the file holds, and the legacy import
+        // writes only key lists, so a list that does not parse is a bug.
+        private static KeyBinding[] Parse(string key, string text)
         {
             KeyBinding[] bindings;
             string error;
-            if (KeyBindings.TryParse(text, out bindings, out error)) return bindings;
-
-            var kept = new List<KeyBinding>();
-            foreach (string item in text.Split(','))
-            {
-                if (KeyBindings.TryParse(item, out bindings, out error)) kept.AddRange(bindings);
-                else logWarning("[Hotkeys] " + key + ": " + error + ", so it is not bound this session");
-            }
-            return kept.ToArray();
+            if (!KeyBindings.TryParse(text, out bindings, out error))
+                throw new InvalidOperationException("[Hotkeys] " + key + "=" + text + ": " + error);
+            return bindings;
         }
     }
 }
