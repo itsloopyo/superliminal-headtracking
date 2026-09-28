@@ -121,6 +121,18 @@ Write-Host "Current version: $currentVersion" -ForegroundColor Gray
 Write-Host "New version:     $Version" -ForegroundColor Green
 Write-Host ""
 
+Write-Host "Running the full test suite..." -ForegroundColor Cyan
+Push-Location $projectDir
+try {
+    pixi run test
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Error: pixi run test failed. Nothing was changed." -ForegroundColor Red
+        exit 1
+    }
+} finally {
+    Pop-Location
+}
+
 # Step 1: generate CHANGELOG from commits since the last tag. This is the gate
 # that aborts when every commit was filtered as noise, so run it BEFORE
 # mutating any version file - a failure here then leaves a clean tree instead of
