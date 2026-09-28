@@ -17,7 +17,7 @@ contained in this repository or in anything we publish.
 | HarmonyX | 2.9.0 | MIT | Inside the vendored BepInEx archive |
 | Mono.Cecil | 0.10.4 | MIT | Inside the vendored BepInEx archive |
 | MonoMod | 22.1.29.1 | MIT | Inside the vendored BepInEx archive |
-| cameraunlock-core | 4a5e7f4d1c37efb9074f7f3651cde8327b64715a | MIT | Separate DLLs beside the plugin, in both ZIPs |
+| cameraunlock-core | e64a81ff0f7bde7ddb3102382a061b4c91f01254 | MIT | Separate DLLs beside the plugin, in both ZIPs |
 | OpenTrack | n/a | ISC | Not bundled; UDP protocol interoperability only |
 | Photon Unity Networking | as shipped by the game | Proprietary, Exit Games | Not bundled; two connection-state properties read by reflection |
 
@@ -826,7 +826,7 @@ a distinct binary rather than being linked into ours, its notice travels with it
 It ships as `licenses/cameraunlock-core-LICENSE.txt` in both release ZIPs, and
 the text is reproduced here as well.
 
-- Pinned commit: `4a5e7f4d1c37efb9074f7f3651cde8327b64715a`
+- Pinned commit: `e64a81ff0f7bde7ddb3102382a061b4c91f01254`
 
 ```
 MIT License
