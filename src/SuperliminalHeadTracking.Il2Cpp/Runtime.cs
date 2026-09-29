@@ -7,7 +7,11 @@ namespace SuperliminalHeadTracking.Il2Cpp
     {
         private readonly HeadTrackingPlugin _plugin = new HeadTrackingPlugin();
 
-        private void Awake() { _plugin.Awake(); }
+        private void Awake()
+        {
+            useGUILayout = false;
+            _plugin.Awake();
+        }
         private void Update() { _plugin.Update(); }
         private void OnGUI() { _plugin.OnGUI(); }
         private void OnDestroy() { _plugin.OnDestroy(); }

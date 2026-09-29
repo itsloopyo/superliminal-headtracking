@@ -84,7 +84,7 @@ namespace SuperliminalHeadTracking.Core
         private bool _loggedMasks;
         private bool _loggedNoAimMask;
         private float _noAimMaskSince = -1f;
-        private bool _loggedCrosshair;
+        private int _loggedCrosshairBind;
         private bool _loggedZoomBasis;
         private TrackingMode _trackingMode;
         private float _nextAimGeometryLogTime;
@@ -111,14 +111,18 @@ namespace SuperliminalHeadTracking.Core
         // PlayerPrefs string lookup on every rendered frame.
         private float _baseFov = DefaultFov;
 
-        // The clamp's own copy of the allowance it last handed the pipeline, used to
-        // recover the UNCLAMPED lean the tracker asked for. See TrackingPipeline.
+        // The allowance last handed the pipeline, so an unchanged one is not written
+        // again and the diagnostics line can report it.
         private float _lastLeanAllowance = 1f;
-        private Vector3 _requestedLean;
 
         internal void Awake()
         {
             Instance = this;
+#if !IL2CPP
+            // OnGUI only draws the notification with GUI.Label, so the Layout pass
+            // Unity would otherwise run through it every frame is pure overhead.
+            useGUILayout = false;
+#endif
             _logInfo = Logger.LogInfo;
             _logError = Logger.LogError;
             Logger.LogInfo(PluginName + " v" + PluginVersion + " initializing...");
@@ -548,28 +552,26 @@ namespace SuperliminalHeadTracking.Core
             // Update. A frame stale at worst, over a query spanning 0.3m, while a
             // walking player covers under 0.1m in that time.
             //
-            // The sweep is asked about the UNCLAMPED lean, recovered by undoing the
-            // scale the clamp itself applied. Sweeping along the applied offset
-            // instead produces a limit cycle the moment the clamp refuses a lean
-            // outright: the offset goes to zero, a zero offset has no direction, the
-            // allowance reopens, the lean comes back, and the eye chatters in and out
-            // of the wall. Below the threshold the direction is unrecoverable, so the
-            // last known request is held - the head is being refused, not centred.
-            if (_lastLeanAllowance > 0.05f)
-            {
-                _requestedLean = _pipeline.LastAppliedPose.EngineOffset / _lastLeanAllowance;
-            }
-
-            if (_requestedLean.sqrMagnitude < 1e-8f)
+            // The sweep is asked about the UNCLAMPED lean, which the pipeline keeps as
+            // it came out of the processor. Sweeping along the applied offset instead
+            // produces a limit cycle the moment the clamp refuses a lean outright: the
+            // offset goes to zero, a zero offset has no direction, the allowance
+            // reopens, the lean comes back, and the eye chatters in and out of the
+            // wall. Recovering the request by dividing the allowance back out fails the
+            // same way from the other side: at an allowance of zero there is nothing
+            // to divide, and holding the last request pins the sweep on the wall, so a
+            // head leaning back AWAY from it stays refused until the body moves.
+            Vector3 requestedLean = HeadPose.EngineAxes(_pipeline.LastRequestedPosition);
+            if (requestedLean.sqrMagnitude < 1e-8f)
             {
                 if (_lastLeanAllowance != 1f) ResetLean();
                 return;
             }
 
             Transform camTr = cam.transform;
-            Vector3 requestedWorld = camTr.rotation * _requestedLean;
+            Vector3 requestedWorld = camTr.rotation * requestedLean;
             float allowance = _leanClamp.Evaluate(
-                camTr.position, requestedWorld, cam.nearClipPlane, Time.deltaTime);
+                camTr.position, requestedWorld, cam.nearClipPlane, Time.unscaledDeltaTime);
 
             if (allowance == _lastLeanAllowance) return;
             _lastLeanAllowance = allowance;
@@ -586,7 +588,6 @@ namespace SuperliminalHeadTracking.Core
             _leanClamp.Reset();
             _pipeline.LeanAllowance = 1f;
             _lastLeanAllowance = 1f;
-            _requestedLean = Vector3.zero;
         }
 
         /// <summary>
@@ -600,9 +601,9 @@ namespace SuperliminalHeadTracking.Core
             _reticle.MeasureEngineDelta = _config.LogAimGeometry;
             _reticle.OnApplied(frame);
 
-            if (!_loggedCrosshair && _reticle.IsActive)
+            if (_reticle.IsActive && _crosshair.BindCount != _loggedCrosshairBind)
             {
-                _loggedCrosshair = true;
+                _loggedCrosshairBind = _crosshair.BindCount;
                 Logger.LogInfo("Crosshair bound: " + _crosshair.Describe());
             }
 
@@ -825,9 +826,11 @@ namespace SuperliminalHeadTracking.Core
             _pipeline.ResetState();
             _rig.ClearPose();
             _reticle.Clear();
-            _crosshair.Release();
-            _loggedCrosshair = false;
             ResetLean();
+
+            // The crosshair binding is kept. Clear has already centred and shown it, and
+            // it rebinds by itself when a level load destroys the HUD, so dropping it
+            // here would only buy a scene-wide search on every unpause and portal lerp.
         }
     }
 }

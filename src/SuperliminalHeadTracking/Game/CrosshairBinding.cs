@@ -45,6 +45,12 @@ namespace SuperliminalHeadTracking.Game
         /// <summary>The crosshair elements were found and can be moved.</summary>
         public bool IsBound { get { return _elements.Count > 0 && _canvasRect != null; } }
 
+        /// <summary>
+        /// How many times the crosshair has been found. Superliminal rebuilds its HUD on
+        /// a level load, so a new count is a new HUD.
+        /// </summary>
+        public int BindCount { get; private set; }
+
         /// <summary>The offset last written, in canvas units.</summary>
         public Vector2 AppliedOffset { get; private set; }
 
@@ -109,6 +115,7 @@ namespace SuperliminalHeadTracking.Game
                 Release();
                 return false;
             }
+            BindCount++;
             return true;
         }
 

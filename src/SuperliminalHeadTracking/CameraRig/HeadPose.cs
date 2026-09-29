@@ -89,7 +89,13 @@ namespace SuperliminalHeadTracking.CameraRig
         /// </summary>
         public Vector3 EngineOffset
         {
-            get { return new Vector3(-Position.X, Position.Y, -Position.Z); }
+            get { return EngineAxes(Position); }
+        }
+
+        /// <summary>A tracker-space position in the camera transform's axes. See <see cref="EngineOffset"/>.</summary>
+        public static Vector3 EngineAxes(Vec3 position)
+        {
+            return new Vector3(-position.X, position.Y, -position.Z);
         }
     }
 }

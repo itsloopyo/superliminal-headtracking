@@ -70,6 +70,14 @@ namespace SuperliminalHeadTracking.Core
         /// <summary>The pose handed to the rig on the last frame that applied one.</summary>
         public HeadPose LastAppliedPose { get { return _lastAppliedPose; } }
 
+        /// <summary>
+        /// The position offset the tracker asked for on the last frame that applied one,
+        /// fade included and <see cref="LeanAllowance"/> not. The lean clamp sweeps along
+        /// this rather than the applied offset, whose direction is lost the moment the
+        /// clamp refuses the lean outright.
+        /// </summary>
+        public Vec3 LastRequestedPosition { get; private set; }
+
         public bool IsRemoteConnection { get; private set; }
 
         public TrackingPipeline(ITrackingDataSource source, TrackingProcessor processor,
@@ -113,15 +121,18 @@ namespace SuperliminalHeadTracking.Core
                 float scale = AdvanceTransitionIn();
 
                 TrackingPose raw = _source.GetLatestPose();
-                TrackingPose interpolated = _interpolator.Update(raw, Time.deltaTime);
-                TrackingPose processed = _processor.Process(interpolated, Time.deltaTime);
+                TrackingPose interpolated = _interpolator.Update(raw, Time.unscaledDeltaTime);
+                TrackingPose processed = _processor.Process(interpolated, Time.unscaledDeltaTime);
+
+                Vec3 requested = ComputePosition();
+                LastRequestedPosition = requested * scale;
 
                 _lastAppliedPose = new HeadPose
                 {
                     Yaw = RotationEnabled ? processed.Yaw : 0f,
                     Pitch = RotationEnabled ? processed.Pitch : 0f,
                     Roll = RotationEnabled ? processed.Roll : 0f,
-                    Position = ComputePosition()
+                    Position = LeanAllowance == 1f ? requested : requested * LeanAllowance
                 }.Scaled(scale);
 
                 _wasApplying = true;
@@ -195,6 +206,7 @@ namespace SuperliminalHeadTracking.Core
             IsApplying = false;
             _detected6DOF = false;
             _lastAppliedPose = HeadPose.Zero;
+            LastRequestedPosition = Vec3.Zero;
             ResetSmoothing();
             ResetInterpolators();
         }
@@ -213,7 +225,7 @@ namespace SuperliminalHeadTracking.Core
 
             if (!_detected6DOF) return Vec3.Zero;
 
-            PositionData interpolated = _positionInterpolator.Update(rawPos, Time.deltaTime);
+            PositionData interpolated = _positionInterpolator.Update(rawPos, Time.unscaledDeltaTime);
 
             // Taken from the processor's smoothed state so the pivot compensation uses
             // the same rotation the camera is being turned by.
@@ -221,8 +233,7 @@ namespace SuperliminalHeadTracking.Core
             _processor.GetSmoothedRotation(out physYaw, out physPitch, out physRoll);
             Quat4 physicalRotation = QuaternionUtils.FromYawPitchRoll(physYaw, physPitch, physRoll);
 
-            Vec3 offset = _positionProcessor.Process(interpolated, physicalRotation, Time.deltaTime);
-            return LeanAllowance == 1f ? offset : offset * LeanAllowance;
+            return _positionProcessor.Process(interpolated, physicalRotation, Time.unscaledDeltaTime);
         }
 
         private void BeginSession()
@@ -238,10 +249,11 @@ namespace SuperliminalHeadTracking.Core
         {
             if (!_isTransitioningIn) return 1f;
 
-            // Scaled time, matching the interpolator and processor that run alongside
-            // it. On unscaled time at timeScale 0 this would fade in a frozen, stale
-            // head offset over a paused game.
-            _transitionInProgress += Time.deltaTime / TransitionInDuration;
+            // Unscaled, like everything else in the pipeline. The tracker samples a real
+            // head in real time, so a game that slows or freezes its clock (Superliminal
+            // has scripts that set timeScale to 1e-6 and to 10) must not slow, freeze
+            // or speed up the interpolation, the smoothing or this fade with it.
+            _transitionInProgress += Time.unscaledDeltaTime / TransitionInDuration;
             if (_transitionInProgress >= 1f)
             {
                 _transitionInProgress = 1f;
@@ -252,10 +264,10 @@ namespace SuperliminalHeadTracking.Core
 
         private void AdvanceTransitionOut()
         {
-            // Unscaled, unlike the fade in. Tracking is suppressed on pause, and the
-            // pause menu zeroes timeScale - on scaled time the fade could never
-            // complete and the menu would render through a view still turned by
-            // whatever the head was doing when the player pressed Escape.
+            // Tracking is suppressed on pause, and the pause menu zeroes timeScale - on
+            // scaled time the fade could never complete and the menu would render
+            // through a view still turned by whatever the head was doing when the
+            // player pressed Escape.
             _transitionOutProgress += Time.unscaledDeltaTime / TransitionOutDuration;
             if (_transitionOutProgress >= 1f)
             {
