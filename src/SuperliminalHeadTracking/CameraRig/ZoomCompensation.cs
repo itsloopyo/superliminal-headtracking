@@ -21,9 +21,6 @@ namespace SuperliminalHeadTracking.CameraRig
     /// not a sensitivity knob and not an aim-down-sights setting. It is exactly 1.0
     /// whenever the game is at its own un-zoomed FOV, so ordinary play is untouched,
     /// and nothing about it is user-configurable.
-    ///
-    /// Mirrors cameraunlock-core's C++ cameraunlock/camera/zoom_compensation.h,
-    /// which has no C# counterpart yet.
     /// </summary>
     public static class ZoomCompensation
     {

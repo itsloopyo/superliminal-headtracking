@@ -40,6 +40,7 @@
   <ItemGroup>
     <Compile Include="..\..\src\SuperliminalHeadTracking\Legacy\*.cs" Link="Legacy\%(Filename)%(Extension)" />
     <Compile Include="..\..\src\SuperliminalHeadTracking\Config\*.cs" Link="Config\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\SuperliminalHeadTracking\CameraRig\LeanCollisionQuery.cs" Link="CameraRig\LeanCollisionQuery.cs" />
     <Compile Include="..\config_differential\**\*.cs" Link="config_differential\%(RecursiveDir)%(Filename)%(Extension)" />
     <Compile Include="..\..\cameraunlock-core\csharp\testing\IniMutations.cs" Link="IniMutations.cs" />
   </ItemGroup>

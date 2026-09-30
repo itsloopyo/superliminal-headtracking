@@ -16,6 +16,7 @@ using SuperliminalHeadTracking.Config;
 using SuperliminalHeadTracking.Game;
 using SuperliminalHeadTracking.Legacy;
 using UnityEngine;
+using ZoomCompensation = SuperliminalHeadTracking.CameraRig.ZoomCompensation;
 
 namespace SuperliminalHeadTracking.Core
 {
@@ -76,6 +77,8 @@ namespace SuperliminalHeadTracking.Core
         private AimTrace _aimTrace;
         private ReticleController _reticle;
         private LeanClamp _leanClamp;
+        private LeanCollisionQuery _leanQuery;
+        private int _leanMask;
         private Harmony _harmony;
 
         private bool _initialized;
@@ -323,11 +326,16 @@ namespace SuperliminalHeadTracking.Core
             _crosshair = new CrosshairBinding();
             _aimTrace = new AimTrace();
             _reticle = new ReticleController(_crosshair, _aimTrace, _logError);
-            _leanClamp = new LeanClamp(0)
+            _leanClamp = new LeanClamp
             {
-                Margin = _config.CollisionMargin,
-                ReleaseSmoothing = _config.CollisionReleaseSmoothing
+                Settings = new LeanClampSettings
+                {
+                    Skin = 0f,
+                    ReleaseSmoothing = _config.CollisionReleaseSmoothing
+                }
             };
+            _leanMask = 0;
+            _leanQuery = new LeanCollisionQuery(CastLean) { Margin = _config.CollisionMargin };
         }
 
         private void BuildGameStateDetector()
@@ -472,10 +480,10 @@ namespace SuperliminalHeadTracking.Core
 
             _maskedCamera = cam;
 
-            if (_aimTrace.Mask == aimMask && _leanClamp.Mask == solidMask) return;
+            if (_aimTrace.Mask == aimMask && _leanMask == solidMask) return;
 
             _aimTrace.SetMask(aimMask);
-            _leanClamp.SetMask(solidMask);
+            _leanMask = solidMask;
 
             if (_loggedMasks) return;
             _loggedMasks = true;
@@ -529,18 +537,11 @@ namespace SuperliminalHeadTracking.Core
         {
             bool active = shouldTrack
                           && _config.CollisionEnabled
-                          && _leanClamp.HasMask
+                          && _leanMask != 0
                           && _pipeline.PositionEnabled;
 
             if (!active)
             {
-                // Unconditionally, not only when something is left to undo. Both are
-                // O(1) and idempotent, and the short-circuit meant the clamp was never
-                // reset at all in the one state that most needs reporting: a mask that
-                // never resolved leaves the allowance at 1 and the request at zero from
-                // the first frame, so LastQueryFailed stayed false and the diagnostics
-                // line could not tell "the sweep is not running" from "the sweep runs
-                // and the room is open".
                 ResetLean();
                 return;
             }
@@ -564,14 +565,18 @@ namespace SuperliminalHeadTracking.Core
             Vector3 requestedLean = HeadPose.EngineAxes(_pipeline.LastRequestedPosition);
             if (requestedLean.sqrMagnitude < 1e-8f)
             {
-                if (_lastLeanAllowance != 1f) ResetLean();
+                ResetLean();
                 return;
             }
 
             Transform camTr = cam.transform;
             Vector3 requestedWorld = camTr.rotation * requestedLean;
-            float allowance = _leanClamp.Evaluate(
-                camTr.position, requestedWorld, cam.nearClipPlane, Time.unscaledDeltaTime);
+            Vector3 eye = camTr.position;
+            Vec3 desired = new Vec3(requestedWorld.x, requestedWorld.y, requestedWorld.z);
+            _leanQuery.NearClipPlane = cam.nearClipPlane;
+            Vec3 allowed = _leanClamp.Apply(new Vec3(eye.x, eye.y, eye.z), desired,
+                Time.unscaledDeltaTime, _leanQuery.Query);
+            float allowance = Mathf.Clamp01(allowed.Magnitude / desired.Magnitude);
 
             if (allowance == _lastLeanAllowance) return;
             _lastLeanAllowance = allowance;
@@ -588,6 +593,19 @@ namespace SuperliminalHeadTracking.Core
             _leanClamp.Reset();
             _pipeline.LeanAllowance = 1f;
             _lastLeanAllowance = 1f;
+        }
+
+        private LineHit CastLean(Vec3 eye, Vec3 direction, float distance)
+        {
+            if (_leanMask == 0) return new LineHit();
+
+            // The eye starts inside the player capsule; a volume sweep would overlap it.
+            RaycastHit hit;
+            if (!Physics.Raycast(new Vector3(eye.X, eye.Y, eye.Z),
+                    new Vector3(direction.X, direction.Y, direction.Z), out hit, distance,
+                    _leanMask, QueryTriggerInteraction.Ignore)) return LineHit.Miss;
+
+            return LineHit.At(hit.distance, new Vec3(hit.normal.x, hit.normal.y, hit.normal.z));
         }
 
         /// <summary>
@@ -692,7 +710,7 @@ namespace SuperliminalHeadTracking.Core
                 pose.Position.X, pose.Position.Y, pose.Position.Z,
                 placement.Hit, placement.Distance,
                 placement.Ndc.x, placement.Ndc.y, placement.Valid, placement.EngineDelta,
-                _lastLeanAllowance, _leanClamp.InContact, _leanClamp.LastQueryFailed,
+                _lastLeanAllowance, _leanClamp.InContact, _leanMask == 0 || _leanClamp.LastQueryFailed,
                 frame.Camera.nearClipPlane, frame.Camera.fieldOfView, _zoomFactor,
                 Vector3.Dot(frame.TrackedForward, cleanRight),
                 Vector3.Dot(frame.TrackedForward, cleanUp),
